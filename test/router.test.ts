@@ -75,6 +75,75 @@ describe("routeSlackEvent", () => {
     expect(routed.incidentId).toBe(declared.incidentId);
   });
 
+  it("resolves the incident on a resolve trigger in its channel", async () => {
+    const declared = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: "C_ORIGIN_RESOLVE",
+        user: "U1",
+        text: "declare API latency spike",
+      }),
+      env,
+    );
+    const incidentChannel = declared.channelId!;
+
+    const resolved = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: incidentChannel,
+        user: "U2",
+        text: "/incident resolve root cause was a bad deploy",
+      }),
+      env,
+    );
+
+    expect(resolved.action).toBe("resolved");
+    expect(resolved.incidentId).toBe(declared.incidentId);
+    // The DO posted a final resolution message carrying the note.
+    const finalPost = slack.posted.at(-1);
+    expect(finalPost?.channel).toBe(incidentChannel);
+    expect(finalPost?.text).toContain("root cause was a bad deploy");
+  });
+
+  it("treats a bare 'resolve' with no note as a resolve trigger", async () => {
+    const declared = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: "C_ORIGIN_RESOLVE2",
+        user: "U1",
+        text: "declare Cache stampede",
+      }),
+      env,
+    );
+
+    const resolved = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: declared.channelId!,
+        user: "U2",
+        text: "resolve",
+      }),
+      env,
+    );
+
+    expect(resolved.action).toBe("resolved");
+  });
+
+  it("does not treat a resolve-like word in an unmapped channel as a trigger", async () => {
+    const res = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: "C_RANDOM_RESOLVE",
+        user: "U9",
+        text: "resolve this later maybe",
+      }),
+      env,
+    );
+    // Unmapped channel -> ignored, resolve trigger only fires inside an
+    // incident's own channel.
+    expect(res.action).toBe("ignored");
+  });
+
   it("ignores messages in unmapped channels", async () => {
     const res = await routeSlackEvent(
       callbackEvent({
