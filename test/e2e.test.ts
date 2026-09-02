@@ -26,6 +26,7 @@ import {
 } from "../src/incident";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
 import { FakeSummarizer } from "../src/clients/fakeOpenai";
+import { TimelineRecorder } from "./timelineRecorder";
 
 const SIGNING_SECRET = "e2e-signing-secret"; // matches vitest.config.ts binding
 const TEAM_ID = "T_E2E";
@@ -114,7 +115,9 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
   });
 
   it("declare -> seed chatter -> multi-tick alarm -> resolve, asserted against D1", async () => {
+    const timeline = new TimelineRecorder("Checkout 500s incident");
     // 1) Declare via the routing layer (same code the Worker runs post-ack).
+    timeline.record("Slack", "U_alice: declare Checkout 500s spiking", "signed webhook → Worker → router");
     const declared = await routeSlackEvent(
       msgEvent({
         channel: "C_ORIGIN",
@@ -126,6 +129,7 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
     expect(declared.action).toBe("declared");
     const incidentId = declared.incidentId!;
     const channelId = declared.channelId!;
+    timeline.record("Engine", "Incident opened + channel created", `id=${incidentId}, status=investigating`);
 
     const inc = await env.DB.prepare(
       "SELECT name, status FROM incidents WHERE id = ?",
@@ -147,20 +151,26 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
     // 2) TICK ONE — seed genuine channel activity, then fire the alarm; it
     // summarizes the new messages into an update and reschedules.
     slack.seedMessage(channelId, "U_bob", "500s on /checkout, ~20%");
+    timeline.record("Slack", "U_bob: 500s on /checkout, ~20%", "in incident channel");
+    timeline.advance(15 * 60 * 1000);
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     const afterTick1 = await countUpdates(incidentId);
     expect(afterTick1).toBeGreaterThan(afterDeclare);
     expect(summarizer.calls.length).toBe(1);
     expect(slack.posted.some((p) => p.channel === channelId)).toBe(true);
+    timeline.record("Engine", "15-min alarm fired → progress update posted", "OpenAI summarized channel; update appended to D1 + posted to Slack");
     await runInDurableObject(stub, async (_i, state) => {
       expect(await state.storage.getAlarm()).not.toBeNull(); // rescheduled
     });
 
     // 3) TICK TWO — more chatter, alarm fires again, another update.
     slack.seedMessage(channelId, "U_alice", "rolled back deploy, recovering");
+    timeline.record("Slack", "U_alice: rolled back deploy, recovering");
+    timeline.advance(15 * 60 * 1000);
     expect(await runDurableObjectAlarm(stub)).toBe(true);
     expect(await countUpdates(incidentId)).toBeGreaterThan(afterTick1);
     expect(summarizer.calls.length).toBe(2);
+    timeline.record("Engine", "15-min alarm fired → second progress update", "loop still active");
 
     // 4) Resolve; assert closed + alarm cancelled + no ghost update.
     await stub.fetch(
@@ -177,6 +187,7 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
       .first<{ status: string; resolved_at: string | null }>();
     expect(resolved?.status).toBe("resolved");
     expect(resolved?.resolved_at).not.toBeNull();
+    timeline.record("Engine", "Incident resolved → alarm cancelled", "status=resolved; loop stopped");
 
     await runInDurableObject(stub, async (_i, state) => {
       expect(await state.storage.getAlarm()).toBeNull();
@@ -187,5 +198,8 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
       expect(await state.storage.getAlarm()).toBeNull(); // does not reschedule
     });
     expect(await countUpdates(incidentId)).toBe(beforeGhost); // no ghost update
+    timeline.record("Test", "Post-resolve alarm tick produced no ghost update", "loop confirmed stopped");
+
+    timeline.emit();
   });
 });
