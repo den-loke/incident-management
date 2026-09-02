@@ -14,8 +14,14 @@ export default defineWorkersConfig(async () => {
           isolatedStorage: false,
           wrangler: { configPath: "./wrangler.jsonc" },
           miniflare: {
-            // Surface the parsed migrations to the test setup as a binding.
-            bindings: { TEST_MIGRATIONS: migrations },
+            // Surface the parsed migrations to the test setup as a binding,
+            // plus a known Slack signing secret + team id so E2E tests can
+            // forge validly-signed webhooks the Worker will accept.
+            bindings: {
+              TEST_MIGRATIONS: migrations,
+              SLACK_SIGNING_SECRET: "e2e-signing-secret",
+              SLACK_TEAM_ID: "T_E2E",
+            },
           },
         },
       },
