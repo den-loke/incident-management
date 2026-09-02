@@ -47,6 +47,10 @@
   "env": {
     "test": {
       "name": "incident-management-test",
+      "durable_objects": {
+        "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Incident"] }],
       "assets": {
         "directory": "./public",
         "binding": "ASSETS",
@@ -64,6 +68,10 @@
     },
     "production": {
       "name": "incident-management",
+      "durable_objects": {
+        "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Incident"] }],
       "assets": {
         "directory": "./public",
         "binding": "ASSETS",

@@ -63,7 +63,7 @@ export async function postIncidentUpdate(
   await stub.fetch(commandRequest({ cmd: "postUpdate", body, status }));
 }
 
-/** Resolve an incident with an optional closing note. */
+/** Resolve an incident with an optional closing note, then auto-draft its post-mortem. */
 export async function resolveIncident(
   env: Env,
   incidentId: string,
@@ -71,4 +71,14 @@ export async function resolveIncident(
 ): Promise<void> {
   const stub = stubForIncident(env, incidentId);
   await stub.fetch(commandRequest({ cmd: "resolve", body }));
+
+  // Auto-draft a post-mortem from the (now complete) timeline. Best-effort: a
+  // draft failure must never fail the resolve itself. Imported lazily to avoid
+  // a module cycle (service -> store -> sink types).
+  try {
+    const { generatePostmortemDraft } = await import("../postmortem/service");
+    await generatePostmortemDraft(env, incidentId);
+  } catch {
+    /* non-fatal: the post-mortem can be generated later from the UI */
+  }
 }

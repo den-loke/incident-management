@@ -15,6 +15,9 @@ import {
   resolveIncident,
 } from "./incidents/commands";
 import { INCIDENT_STATUSES, type IncidentStatus } from "./status/types";
+import { D1Db } from "./status/d1";
+import { PostmortemStore } from "./postmortem/store";
+import { generatePostmortemDraft } from "./postmortem/service";
 
 export { Incident } from "./incident";
 
@@ -44,6 +47,11 @@ function isIncidentStatus(v: unknown): v is IncidentStatus {
     typeof v === "string" &&
     (INCIDENT_STATUSES as readonly string[]).includes(v)
   );
+}
+
+/** Coerce an unknown JSON field to a trimmed string (empty when absent). */
+function str(v: unknown): string {
+  return typeof v === "string" ? v : "";
 }
 
 async function handleSlackEvents(
@@ -154,6 +162,62 @@ export default {
       const body = await readJson(request);
       const note = typeof body?.body === "string" ? body.body : undefined;
       await resolveIncident(env, decodeURIComponent(resolveMatch[1]), note);
+      return json({ ok: true });
+    }
+
+    // --- Post-mortems (session-gated). ---
+    const pmMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/postmortem$/);
+    if (pmMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const incidentId = decodeURIComponent(pmMatch[1]);
+      const store = new PostmortemStore(new D1Db(env.DB));
+
+      if (request.method === "GET") {
+        const pm = await store.get(incidentId);
+        return pm ? json(pm) : json({ error: "not_found" }, 404);
+      }
+      // POST => (re)generate the AI draft from the timeline.
+      if (request.method === "POST") {
+        const pm = await generatePostmortemDraft(env, incidentId);
+        return pm ? json(pm) : json({ error: "incident_not_found" }, 404);
+      }
+      // PUT => save human edits.
+      if (request.method === "PUT") {
+        const b = await readJson(request);
+        const pm = await store.saveDraft(incidentId, {
+          summary: str(b?.summary),
+          impact: str(b?.impact),
+          root_cause: str(b?.root_cause),
+          contributing_factors: str(b?.contributing_factors),
+          action_items: Array.isArray(b?.action_items)
+            ? (b.action_items as unknown[]).filter((x): x is string => typeof x === "string")
+            : [],
+        });
+        return json(pm);
+      }
+    }
+
+    const pmPublishMatch = url.pathname.match(
+      /^\/api\/incidents\/([^/]+)\/postmortem\/publish$/,
+    );
+    if (request.method === "POST" && pmPublishMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const store = new PostmortemStore(new D1Db(env.DB));
+      await store.publish(decodeURIComponent(pmPublishMatch[1]));
+      return json({ ok: true });
+    }
+
+    const aiMatch = url.pathname.match(
+      /^\/api\/postmortem-action-items\/([^/]+)$/,
+    );
+    if (request.method === "POST" && aiMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const b = await readJson(request);
+      const store = new PostmortemStore(new D1Db(env.DB));
+      await store.setActionItemDone(decodeURIComponent(aiMatch[1]), b?.done === true);
       return json({ ok: true });
     }
 

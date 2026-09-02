@@ -52,3 +52,71 @@ export function resolveIncident(incidentId: string, body?: string): Promise<void
     body,
   });
 }
+
+// --- Post-mortems ---
+
+export interface ActionItem {
+  id: string;
+  description: string;
+  owner: string | null;
+  done: boolean;
+}
+export interface Postmortem {
+  id: string;
+  incident_id: string;
+  status: "draft" | "published";
+  summary: string;
+  impact: string;
+  root_cause: string;
+  contributing_factors: string;
+  published_at: string | null;
+  action_items: ActionItem[];
+}
+export interface PostmortemEdit {
+  summary: string;
+  impact: string;
+  root_cause: string;
+  contributing_factors: string;
+  action_items: string[];
+}
+
+async function getJson<T>(path: string): Promise<T | null> {
+  const res = await fetch(path, { credentials: "same-origin", headers: { accept: "application/json" } });
+  if (res.status === 404) return null;
+  if (res.status === 401) throw new UnauthorizedError("not signed in");
+  if (!res.ok) throw new Error(`request failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
+async function putJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`request failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
+export function getPostmortem(incidentId: string): Promise<Postmortem | null> {
+  return getJson(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem`);
+}
+export function generatePostmortem(incidentId: string): Promise<Postmortem> {
+  return fetch(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem`, {
+    method: "POST",
+    credentials: "same-origin",
+  }).then((r) => {
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<Postmortem>;
+  });
+}
+export function savePostmortem(incidentId: string, edit: PostmortemEdit): Promise<Postmortem> {
+  return putJson(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem`, edit);
+}
+export function publishPostmortem(incidentId: string): Promise<void> {
+  return postJson(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem/publish`, {});
+}
+export function toggleActionItem(itemId: string, done: boolean): Promise<void> {
+  return postJson(`/api/postmortem-action-items/${encodeURIComponent(itemId)}`, { done });
+}
