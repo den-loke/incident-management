@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
 import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
 import { PostmortemSection } from "@/components/PostmortemSection";
+import { ReportPanel } from "@/components/ReportPanel";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -133,6 +134,8 @@ export function StatusPage({
           <span className="font-medium">{line}</span>
         </CardContent>
       </Card>
+
+      <ReportPanel />
 
       <section className="mb-8">
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

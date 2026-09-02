@@ -120,3 +120,31 @@ export function publishPostmortem(incidentId: string): Promise<void> {
 export function toggleActionItem(itemId: string, done: boolean): Promise<void> {
   return postJson(`/api/postmortem-action-items/${encodeURIComponent(itemId)}`, { done });
 }
+
+// --- Reporting ---
+
+export interface Report {
+  from: string;
+  to: string;
+  opened: number;
+  resolved: number;
+  open_now: number;
+  mttr_seconds: number | null;
+  mtta_seconds: number | null;
+  open_action_items: number;
+}
+
+export function getReport(period: string): Promise<Report> {
+  return fetch(`/api/reports?period=${encodeURIComponent(period)}`, {
+    credentials: "same-origin",
+    headers: { accept: "application/json" },
+  }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<Report>;
+  });
+}
+
+export function reportCsvUrl(period: string): string {
+  return `/api/reports?period=${encodeURIComponent(period)}&format=csv`;
+}
