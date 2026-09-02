@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { buttonVariants } from "@/components/ui/button";
 import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
 import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
+import { PostmortemSection } from "@/components/PostmortemSection";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +82,14 @@ function IncidentCard({
           <div className="mt-4">
             <IncidentActions incidentId={incident.id} onDone={onChange} />
           </div>
+        )}
+        {!active && (
+          <>
+            <div className="my-4">
+              <Separator />
+            </div>
+            <PostmortemSection incidentId={incident.id} />
+          </>
         )}
       </CardContent>
     </Card>
