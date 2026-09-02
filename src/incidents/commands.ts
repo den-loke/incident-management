@@ -1,0 +1,74 @@
+/// <reference types="@cloudflare/workers-types" />
+// Shared incident operations. The single path from ANY caller (Slack router or
+// web API) to the Incident Durable Object, so declare/update/resolve behave
+// identically regardless of surface. See docs/ARCHITECTURE.md §2.
+
+import type { Env } from "../env";
+import { D1Db } from "../status/d1";
+import type { IncidentStatus } from "../status/types";
+
+/** Build an internal command request for a DO stub. */
+export function commandRequest(command: unknown): Request {
+  return new Request("https://do/command", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(command),
+  });
+}
+
+// One DO per incident, named by the incident id (see router.ts: doId = incidentId).
+function stubForIncident(env: Env, incidentId: string): DurableObjectStub {
+  return env.INCIDENT.get(env.INCIDENT.idFromName(incidentId));
+}
+
+export interface DeclareResult {
+  incidentId: string;
+  channelId: string;
+}
+
+/**
+ * Declare a new incident: mint an id, drive the DO to open it + create its Slack
+ * channel + arm the alarm, then record the channel->DO mapping so later Slack
+ * messages in that channel route back to the same DO.
+ */
+export async function declareIncident(
+  env: Env,
+  name: string,
+  body?: string,
+): Promise<DeclareResult> {
+  const incidentId = `inc_${crypto.randomUUID()}`;
+  const stub = stubForIncident(env, incidentId);
+
+  const res = await stub.fetch(
+    commandRequest({ cmd: "declare", name, body, id: incidentId }),
+  );
+  const { channelId } = (await res.json()) as { channelId: string };
+
+  await new D1Db(env.DB).run(
+    "INSERT INTO incident_channels (channel, incident_id, do_id) VALUES (?, ?, ?)",
+    [channelId, incidentId, incidentId],
+  );
+
+  return { incidentId, channelId };
+}
+
+/** Append an explicit update to an incident (optionally advancing its status). */
+export async function postIncidentUpdate(
+  env: Env,
+  incidentId: string,
+  body: string,
+  status?: IncidentStatus,
+): Promise<void> {
+  const stub = stubForIncident(env, incidentId);
+  await stub.fetch(commandRequest({ cmd: "postUpdate", body, status }));
+}
+
+/** Resolve an incident with an optional closing note. */
+export async function resolveIncident(
+  env: Env,
+  incidentId: string,
+  body?: string,
+): Promise<void> {
+  const stub = stubForIncident(env, incidentId);
+  await stub.fetch(commandRequest({ cmd: "resolve", body }));
+}

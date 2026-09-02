@@ -1,6 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "./env";
 import { D1Db } from "./status/d1";
+import {
+  commandRequest,
+  declareIncident,
+  resolveIncident,
+} from "./incidents/commands";
 
 /**
  * Routes verified Slack events to the right Incident Durable Object.
@@ -90,18 +95,7 @@ export async function routeSlackEvent(
 
   if (isDeclareTrigger(event)) {
     const name = parseDeclare(event.text ?? "");
-    const incidentId = `inc_${crypto.randomUUID()}`;
-    const doId = incidentId; // one DO per incident; name it by the incident id
-    const stub = env.INCIDENT.get(env.INCIDENT.idFromName(doId));
-
-    const res = await stub.fetch(commandRequest({ cmd: "declare", name, id: incidentId }));
-    const { channelId } = (await res.json()) as { channelId: string };
-
-    await db.run(
-      "INSERT INTO incident_channels (channel, incident_id, do_id) VALUES (?, ?, ?)",
-      [channelId, incidentId, doId],
-    );
-
+    const { incidentId, channelId } = await declareIncident(env, name);
     return { action: "declared", incidentId, channelId };
   }
 
@@ -118,9 +112,7 @@ export async function routeSlackEvent(
   // A resolve trigger in the incident's own channel closes it out: the DO
   // posts a final update, marks status resolved, and stops its alarm loop.
   if (isResolveTrigger(event)) {
-    await stub.fetch(
-      commandRequest({ cmd: "resolve", body: parseResolve(event.text ?? "") }),
-    );
+    await resolveIncident(env, row.incident_id, parseResolve(event.text ?? ""));
     return {
       action: "resolved",
       incidentId: row.incident_id,
@@ -141,13 +133,4 @@ export async function routeSlackEvent(
     incidentId: row.incident_id,
     channelId: event.channel,
   };
-}
-
-/** Build an internal command request for a DO stub. */
-export function commandRequest(command: unknown): Request {
-  return new Request("https://do/command", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(command),
-  });
 }

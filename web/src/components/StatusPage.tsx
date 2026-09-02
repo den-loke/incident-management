@@ -7,6 +7,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { buttonVariants } from "@/components/ui/button";
 import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
+import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,14 @@ function overallLine(components: Component[], hasActive: boolean): string {
   return worst === "operational" ? "All systems operational" : "Degraded service";
 }
 
-function IncidentCard({ incident }: { incident: Incident }) {
+function IncidentCard({
+  incident,
+  onChange,
+}: {
+  incident: Incident;
+  onChange: () => void;
+}) {
+  const active = incident.status !== "resolved";
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-3">
@@ -69,12 +77,23 @@ function IncidentCard({ incident }: { incident: Incident }) {
             ))}
           </ol>
         )}
+        {active && (
+          <div className="mt-4">
+            <IncidentActions incidentId={incident.id} onDone={onChange} />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-export function StatusPage({ data }: { data: StatusResponse }) {
+export function StatusPage({
+  data,
+  onChange,
+}: {
+  data: StatusResponse;
+  onChange: () => void;
+}) {
   const active = data.incidents.filter((i) => i.status !== "resolved");
   const line = overallLine(data.components, active.length > 0);
 
@@ -83,6 +102,7 @@ export function StatusPage({ data }: { data: StatusResponse }) {
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Incident Status</h1>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <DeclareIncidentButton onDone={onChange} />
           <span>{data.viewer.name || data.viewer.user_id}</span>
           <a
             className={buttonVariants({ variant: "ghost", size: "sm" })}
@@ -139,7 +159,7 @@ export function StatusPage({ data }: { data: StatusResponse }) {
         ) : (
           <div className="space-y-3">
             {data.incidents.map((inc) => (
-              <IncidentCard key={inc.id} incident={inc} />
+              <IncidentCard key={inc.id} incident={inc} onChange={onChange} />
             ))}
           </div>
         )}
