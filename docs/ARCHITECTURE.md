@@ -172,11 +172,10 @@ Not in the day-one essentials, but the design accounts for it.
   `Authorization: <RECALLAI_API_KEY>`.
 - Consume webhooks async (Svix; 2xx within 15s) via the front Worker → Queue → DO.
   Real-time `transcript.data` events feed the incident DO's OpenAI summarization.
-- ⚠️ **OPEN: Slack-huddle bot support is unconfirmed.** Recall's marketing claims
-  it, but the current bot-platform reference table omits Slack huddles (SDK
-  capture is macOS-only / audio-only). **Verify with Recall before treating
-  Slack-huddle transcription as load-bearing.** Solid for Zoom / Google Meet /
-  Teams / Webex.
+- ✅ **DECIDED: Slack huddles are out of scope.** Recall's Slack-huddle bot
+  support is unconfirmed/hard (the bot-platform table omits it; SDK capture is
+  macOS-only / audio-only). Supported call platforms are **Zoom / Google Meet /
+  Microsoft Teams / Webex** (all solid in Recall's bot table).
 
 ---
 
@@ -237,8 +236,8 @@ test, not the backbone.
 - Status model: components 1:1 with Statuspage.
 - Auth: Sign in with Slack (OIDC), `team_id` allow-list; `AUTH_MODE=bypass` for E2E.
 - E2E: forge signed Slack webhooks + advance DO alarms → deterministic fake incident.
+- **Call platform: Zoom / Google Meet / Teams / Webex** (Slack huddles dropped — too hard / unconfirmed).
+- **Dashboard scope: Slack-first.** Day-one web UI is the read-only internal status page (components + incident timeline from D1); all incident operations (declare / update / resolve) run through Slack. A fuller dashboard is deferred.
 
 **Open (do not block spec, resolve before/within implementation):**
-- **Call platform** for Recall: Slack huddles (needs Recall verification) vs Zoom/Meet/Teams (solid). *Assumed Zoom/Meet until stated otherwise.*
-- **Dashboard scope day one:** Slack-only-first vs full web dashboard from the start. *Assumed Slack-first, minimal web UI (internal status page) day one.*
 - Statuspage outbound-webhook subscription (consume component/incident events back) — later.
