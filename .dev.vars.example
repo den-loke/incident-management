@@ -18,3 +18,14 @@ RECALLAI_API_KEY=
 
 # --- E2E only: set to "bypass" to stub the Slack session ---
 AUTH_MODE=
+
+# =====================================================================
+# LOCAL NO-SLACK PROFILE — run the whole thing with no Slack/OpenAI:
+#   AUTH_MODE=bypass
+#   SLACK_SIGNING_SECRET=dev-secret     (any value; the harness signs with it)
+#   SLACK_TEAM_ID=T_DEV
+#   SLACK_BOT_TOKEN / OPENAI_API_KEY can be left blank in this mode.
+# Then:  npm run dev   (terminal 1)   and   npm run dev:fake-incident (terminal 2)
+# With AUTH_MODE=bypass the Incident DO uses in-process fake Slack + OpenAI
+# clients; the internal status page is still written to the local D1.
+# =====================================================================
