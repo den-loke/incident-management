@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "incident-management",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Per-incident state + timers. One Durable Object instance == one incident.
+  "durable_objects": {
+    "bindings": [
+      { "name": "INCIDENT", "class_name": "Incident" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Incident"] }
+  ],
+
+  // Incident data / audit log / internal status page (source of truth).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "incident-management",
+      "database_id": "PLACEHOLDER_CREATE_WITH_wrangler_d1_create",
+      "migrations_dir": "migrations"
+    }
+  ]
+
+  // Workflows (retry-heavy flows: Recall 507 retries, Statuspage 429 backoff).
+  // Enable once the first Workflow class exists:
+  // "workflows": [
+  //   { "name": "incident-flows", "binding": "INCIDENT_FLOWS", "class_name": "IncidentFlow" }
+  // ]
+}

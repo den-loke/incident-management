@@ -1,0 +1,20 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+# See docs/ARCHITECTURE.md §10.
+
+# --- Required ---
+SLACK_TEAM_ID=T00000000
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_SIGNING_SECRET=...
+SLACK_CLIENT_ID=...
+SLACK_CLIENT_SECRET=...
+OPENAI_API_KEY=sk-...
+
+# --- Optional: enables the Statuspage mirror sink ---
+STATUSPAGE_API_KEY=
+STATUSPAGE_PAGE_ID=
+
+# --- Optional: call transcription (later) ---
+RECALLAI_API_KEY=
+
+# --- E2E only: set to "bypass" to stub the Slack session ---
+AUTH_MODE=
