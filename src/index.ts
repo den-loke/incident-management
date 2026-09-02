@@ -8,7 +8,7 @@ import {
   handleLogin,
   handleLogout,
 } from "./auth/oidc";
-import { loadStatus, renderLoginPage, renderStatusPage } from "./ui/statusPage";
+import { loadStatus } from "./ui/statusPage";
 
 export { Incident } from "./incident";
 
@@ -16,13 +16,6 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
-  });
-}
-
-function html(body: string, status = 200): Response {
-  return new Response(body, {
-    status,
-    headers: { "content-type": "text/html; charset=utf-8" },
   });
 }
 
@@ -93,12 +86,20 @@ export default {
       return handleLogout(url);
     }
 
-    // --- Dashboard (internal status page), gated behind a Slack session. ---
-    if (request.method === "GET" && url.pathname === "/") {
+    // --- Status JSON for the SPA, gated behind a Slack session. ---
+    if (request.method === "GET" && url.pathname === "/api/status") {
       const session = await getSession(request, env);
-      if (!session) return html(renderLoginPage(), 401);
-      const data = await loadStatus(env);
-      return html(renderStatusPage(data, session));
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const data = await loadStatus(env, session);
+      return json(data);
+    }
+
+    // --- Static SPA assets (built from web/ into ../public). ---
+    // The SPA calls /api/status; a 401 there drives it to render the login screen.
+    // ASSETS with not_found_handling:"single-page-application" serves index.html
+    // for unknown paths so client routing works.
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
     }
 
     return json({ error: "not_found" }, 404);

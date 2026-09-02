@@ -21,6 +21,10 @@ export default defineWorkersConfig(async () => {
               TEST_MIGRATIONS: migrations,
               SLACK_SIGNING_SECRET: "e2e-signing-secret",
               SLACK_TEAM_ID: "T_E2E",
+              // Pin auth to real OIDC in tests. Overrides any AUTH_MODE=bypass
+              // that a local .dev.vars might otherwise leak into the test env,
+              // which would silently turn the auth-gating assertions green.
+              AUTH_MODE: "",
             },
           },
         },

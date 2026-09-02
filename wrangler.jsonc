@@ -26,6 +26,16 @@
     }
   ],
 
+  // React SPA (built from web/ into ./public). Served via the ASSETS binding;
+  // unknown paths fall back to index.html for client-side routing. The Worker
+  // still owns /api/*, /auth/*, /slack/events, /health before assets are tried.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+
   // --- Two named environments = two URLs, one Slack workspace each. ---
   // Each gets its own worker name (=> its own <name>.<subdomain>.workers.dev URL)
   // and its own D1 database. Deploy with:  wrangler deploy --env test | production
@@ -37,6 +47,12 @@
   "env": {
     "test": {
       "name": "incident-management-test",
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": true
+      },
       "d1_databases": [
         {
           "binding": "DB",
@@ -48,6 +64,12 @@
     },
     "production": {
       "name": "incident-management",
+      "assets": {
+        "directory": "./public",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": true
+      },
       "d1_databases": [
         {
           "binding": "DB",
