@@ -4,8 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "web:install": "npm --prefix web install",
+    "web:build": "npm --prefix web run build",
     "dev": "wrangler dev",
+    "dev:web": "npm --prefix web run dev",
     "dev:fake-incident": "node scripts/fake-incident.ts",
+    "predeploy": "npm run web:build",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "test": "vitest run",

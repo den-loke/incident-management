@@ -241,3 +241,11 @@ test, not the backbone.
 
 **Open (do not block spec, resolve before/within implementation):**
 - Statuspage outbound-webhook subscription (consume component/incident events back) — later.
+- **When building the status-page UI:** add fixture-driven example states (a dev-only `?fixture=<name>` / preview route rendering hardcoded states — all-operational, degraded, partial/major outage, each incident lifecycle phase, maintenance) plus a `scripts/shoot-states.ts` that drives `wrangler dev` with Playwright to save `screenshots/<state>.png` for each. Lightweight manual tooling — NOT Storybook (read-only server-rendered page needs named data fixtures + a URL per state, not component-isolation). Uses the browser-recording / web-verify tooling.
+
+---
+
+## 12. Roadmap
+
+The living roadmap (shipped / next / post-mortems / reporting / deferred) lives in
+[`ROADMAP.md`](../ROADMAP.md) at the repo root.

@@ -6,6 +6,9 @@ export interface Env {
   INCIDENT: DurableObjectNamespace;
   // D1: incident data + internal status page (source of truth).
   DB: D1Database;
+  // Static SPA assets (built from web/ into ./public). Optional so unit tests
+  // (which don't bind ASSETS) still type-check; the fetch handler guards on it.
+  ASSETS?: Fetcher;
 
   // --- Secrets / vars (per-deployment) ---
   SLACK_TEAM_ID: string; // the one workspace this install serves

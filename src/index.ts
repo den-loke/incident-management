@@ -2,6 +2,13 @@
 import type { Env } from "./env";
 import { verifySlackRequest } from "./slack/verify";
 import { routeSlackEvent } from "./router";
+import {
+  getSession,
+  handleCallback,
+  handleLogin,
+  handleLogout,
+} from "./auth/oidc";
+import { loadStatus } from "./ui/statusPage";
 
 export { Incident } from "./incident";
 
@@ -66,6 +73,33 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/slack/events") {
       return handleSlackEvents(request, env, ctx);
+    }
+
+    // --- Dashboard auth routes (OIDC). Not HMAC-gated. ---
+    if (request.method === "GET" && url.pathname === "/auth/login") {
+      return handleLogin(url, env);
+    }
+    if (request.method === "GET" && url.pathname === "/auth/callback") {
+      return handleCallback(request, url, env);
+    }
+    if (request.method === "GET" && url.pathname === "/auth/logout") {
+      return handleLogout(url);
+    }
+
+    // --- Status JSON for the SPA, gated behind a Slack session. ---
+    if (request.method === "GET" && url.pathname === "/api/status") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const data = await loadStatus(env, session);
+      return json(data);
+    }
+
+    // --- Static SPA assets (built from web/ into ../public). ---
+    // The SPA calls /api/status; a 401 there drives it to render the login screen.
+    // ASSETS with not_found_handling:"single-page-application" serves index.html
+    // for unknown paths so client routing works.
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
     }
 
     return json({ error: "not_found" }, 404);

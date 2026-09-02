@@ -4,3 +4,8 @@ node_modules/
 dist/
 test-artifacts/
 *.log
+public/
+web/node_modules/
+web/dist/
+
+web/tsconfig.tsbuildinfo
