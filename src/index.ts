@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "./env";
 import { verifySlackRequest } from "./slack/verify";
+import { routeSlackEvent } from "./router";
 
 export { Incident } from "./incident";
 
@@ -11,7 +12,11 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-async function handleSlackEvents(request: Request, env: Env): Promise<Response> {
+async function handleSlackEvents(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
   // Read the raw body ONCE — signature verification needs the exact bytes.
   const rawBody = await request.text();
 
@@ -39,13 +44,20 @@ async function handleSlackEvents(request: Request, env: Env): Promise<Response> 
     return json({ challenge });
   }
 
-  // Ack within 3s; real processing is handed off to the incident DO later.
-  // TODO: route the event to the right Incident DO (async, after ack).
+  // Ack within 3s; route the event to the right Incident DO asynchronously.
+  // Slack retries on non-2xx, so dispatch failures are re-delivered.
+  ctx.waitUntil(
+    routeSlackEvent(payload as Parameters<typeof routeSlackEvent>[0], env),
+  );
   return json({ ok: true });
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/health") {
@@ -53,7 +65,7 @@ export default {
     }
 
     if (request.method === "POST" && url.pathname === "/slack/events") {
-      return handleSlackEvents(request, env);
+      return handleSlackEvents(request, env, ctx);
     }
 
     return json({ error: "not_found" }, 404);

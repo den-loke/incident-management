@@ -28,3 +28,4 @@ export * from "./sink";
 export { InternalStatusSink } from "./internalSink";
 export { MultiSink } from "./multiSink";
 export { StatuspageSink } from "./statuspageSink";
+export { D1Db } from "./d1";
