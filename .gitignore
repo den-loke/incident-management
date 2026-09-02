@@ -9,3 +9,5 @@ web/node_modules/
 web/dist/
 
 web/tsconfig.tsbuildinfo
+web/storybook-static/
+web/screenshots/

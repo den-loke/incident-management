@@ -1,0 +1,169 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Input, Select, Textarea } from "@/components/ui/form";
+import * as api from "@/lib/api";
+import { INCIDENT_LABEL, type IncidentStatus } from "@/types";
+
+const OPEN_STATUSES: IncidentStatus[] = ["investigating", "identified", "monitoring"];
+
+function ErrorLine({ msg }: { msg: string | null }) {
+  if (!msg) return null;
+  return <p className="mb-3 text-sm text-muted-foreground">Error: {msg}</p>;
+}
+
+export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.declareIncident(name.trim(), body.trim() || undefined);
+      setOpen(false);
+      setName("");
+      setBody("");
+      onDone();
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        Declare incident
+      </Button>
+      <Dialog open={open} onClose={() => !busy && setOpen(false)} title="Declare incident">
+        <ErrorLine msg={err} />
+        <div className="space-y-3">
+          <Input
+            autoFocus
+            placeholder="Incident name (e.g. Checkout returning 500s)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Textarea
+            placeholder="First update (optional)"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={submit} disabled={busy || !name.trim()}>
+              {busy ? "Declaring…" : "Declare"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
+  );
+}
+
+export function IncidentActions({
+  incidentId,
+  onDone,
+}: {
+  incidentId: string;
+  onDone: () => void;
+}) {
+  const [mode, setMode] = useState<null | "update" | "resolve">(null);
+  const [body, setBody] = useState("");
+  const [status, setStatus] = useState<IncidentStatus>("monitoring");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function close() {
+    if (busy) return;
+    setMode(null);
+    setBody("");
+    setErr(null);
+  }
+
+  async function submit() {
+    setBusy(true);
+    setErr(null);
+    try {
+      if (mode === "update") await api.postUpdate(incidentId, body.trim(), status);
+      else await api.resolveIncident(incidentId, body.trim() || undefined);
+      close();
+      onDone();
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => setMode("update")}>
+          Post update
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setMode("resolve")}>
+          Resolve
+        </Button>
+      </div>
+
+      <Dialog
+        open={mode === "update"}
+        onClose={close}
+        title="Post update"
+      >
+        <ErrorLine msg={err} />
+        <div className="space-y-3">
+          <Select value={status} onChange={(e) => setStatus(e.target.value as IncidentStatus)}>
+            {OPEN_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {INCIDENT_LABEL[s]}
+              </option>
+            ))}
+          </Select>
+          <Textarea
+            autoFocus
+            placeholder="Update details"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={submit} disabled={busy || !body.trim()}>
+              {busy ? "Posting…" : "Post update"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog open={mode === "resolve"} onClose={close} title="Resolve incident">
+        <ErrorLine msg={err} />
+        <div className="space-y-3">
+          <Textarea
+            autoFocus
+            placeholder="Resolution note (optional)"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={submit} disabled={busy}>
+              {busy ? "Resolving…" : "Resolve incident"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </>
+  );
+}

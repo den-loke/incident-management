@@ -9,6 +9,12 @@ import {
   handleLogout,
 } from "./auth/oidc";
 import { loadStatus } from "./ui/statusPage";
+import {
+  declareIncident,
+  postIncidentUpdate,
+  resolveIncident,
+} from "./incidents/commands";
+import { INCIDENT_STATUSES, type IncidentStatus } from "./status/types";
 
 export { Incident } from "./incident";
 
@@ -17,6 +23,27 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+/** Parse a JSON request body, tolerating empty/invalid bodies. */
+async function readJson(
+  request: Request,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const v = await request.json();
+    return typeof v === "object" && v !== null
+      ? (v as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isIncidentStatus(v: unknown): v is IncidentStatus {
+  return (
+    typeof v === "string" &&
+    (INCIDENT_STATUSES as readonly string[]).includes(v)
+  );
 }
 
 async function handleSlackEvents(
@@ -92,6 +119,42 @@ export default {
       if (!session) return json({ error: "unauthorized" }, 401);
       const data = await loadStatus(env, session);
       return json(data);
+    }
+
+    // --- Incident management (write), gated behind a Slack session. ---
+    // These reuse the SAME Incident DO command path as Slack (declareIncident /
+    // postIncidentUpdate / resolveIncident), so web and Slack never diverge.
+    if (request.method === "POST" && url.pathname === "/api/incidents") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const name = typeof body?.name === "string" ? body.name.trim() : "";
+      if (!name) return json({ error: "name_required" }, 400);
+      const note = typeof body?.body === "string" ? body.body : undefined;
+      const result = await declareIncident(env, name, note);
+      return json(result, 201);
+    }
+
+    const updateMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/updates$/);
+    if (request.method === "POST" && updateMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const text = typeof body?.body === "string" ? body.body.trim() : "";
+      if (!text) return json({ error: "body_required" }, 400);
+      const status = isIncidentStatus(body?.status) ? body.status : undefined;
+      await postIncidentUpdate(env, decodeURIComponent(updateMatch[1]), text, status);
+      return json({ ok: true });
+    }
+
+    const resolveMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/resolve$/);
+    if (request.method === "POST" && resolveMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const note = typeof body?.body === "string" ? body.body : undefined;
+      await resolveIncident(env, decodeURIComponent(resolveMatch[1]), note);
+      return json({ ok: true });
     }
 
     // --- Static SPA assets (built from web/ into ../public). ---

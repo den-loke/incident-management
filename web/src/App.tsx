@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchStatus, UnauthorizedError } from "@/lib/api";
 import { LoginScreen } from "@/components/LoginScreen";
 import { StatusPage } from "@/components/StatusPage";
@@ -13,7 +13,7 @@ type State =
 export default function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
 
-  useEffect(() => {
+  const load = useCallback(() => {
     let cancelled = false;
     fetchStatus()
       .then((data) => !cancelled && setState({ kind: "ready", data }))
@@ -26,6 +26,8 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   if (state.kind === "loading") {
     return (
@@ -45,5 +47,5 @@ export default function App() {
       </div>
     );
   }
-  return <StatusPage data={state.data} />;
+  return <StatusPage data={state.data} onChange={load} />;
 }
