@@ -24,7 +24,40 @@
       "database_id": "PLACEHOLDER_CREATE_WITH_wrangler_d1_create",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+
+  // --- Two named environments = two URLs, one Slack workspace each. ---
+  // Each gets its own worker name (=> its own <name>.<subdomain>.workers.dev URL)
+  // and its own D1 database. Deploy with:  wrangler deploy --env test | production
+  // Set per-env secrets with:  wrangler secret put <NAME> --env test|production
+  // (SLACK_TEAM_ID, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET, SLACK_CLIENT_ID,
+  //  SLACK_CLIENT_SECRET, OPENAI_API_KEY, and optionally STATUSPAGE_*/RECALLAI_API_KEY.)
+  // The OIDC redirect_uri is derived from the request origin, so each URL just
+  // needs its own https://<url>/auth/callback registered on its Slack app.
+  "env": {
+    "test": {
+      "name": "incident-management-test",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "incident-management-test",
+          "database_id": "PLACEHOLDER_CREATE_WITH_wrangler_d1_create",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "incident-management",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "incident-management-prod",
+          "database_id": "PLACEHOLDER_CREATE_WITH_wrangler_d1_create",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 
   // Workflows (retry-heavy flows: Recall 507 retries, Statuspage 429 backoff).
   // Enable once the first Workflow class exists:

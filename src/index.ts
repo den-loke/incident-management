@@ -2,6 +2,13 @@
 import type { Env } from "./env";
 import { verifySlackRequest } from "./slack/verify";
 import { routeSlackEvent } from "./router";
+import {
+  getSession,
+  handleCallback,
+  handleLogin,
+  handleLogout,
+} from "./auth/oidc";
+import { loadStatus, renderLoginPage, renderStatusPage } from "./ui/statusPage";
 
 export { Incident } from "./incident";
 
@@ -9,6 +16,13 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
+  });
+}
+
+function html(body: string, status = 200): Response {
+  return new Response(body, {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8" },
   });
 }
 
@@ -66,6 +80,25 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/slack/events") {
       return handleSlackEvents(request, env, ctx);
+    }
+
+    // --- Dashboard auth routes (OIDC). Not HMAC-gated. ---
+    if (request.method === "GET" && url.pathname === "/auth/login") {
+      return handleLogin(url, env);
+    }
+    if (request.method === "GET" && url.pathname === "/auth/callback") {
+      return handleCallback(request, url, env);
+    }
+    if (request.method === "GET" && url.pathname === "/auth/logout") {
+      return handleLogout(url);
+    }
+
+    // --- Dashboard (internal status page), gated behind a Slack session. ---
+    if (request.method === "GET" && url.pathname === "/") {
+      const session = await getSession(request, env);
+      if (!session) return html(renderLoginPage(), 401);
+      const data = await loadStatus(env);
+      return html(renderStatusPage(data, session));
     }
 
     return json({ error: "not_found" }, 404);

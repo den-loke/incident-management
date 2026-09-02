@@ -19,6 +19,11 @@ RECALLAI_API_KEY=
 # --- E2E only: set to "bypass" to stub the Slack session ---
 AUTH_MODE=
 
+# When running locally, the dashboard is at http://localhost:8787/ and Slack
+# sign-in is gated. Either set AUTH_MODE=bypass (stub session, no real Slack),
+# or register http://localhost:8787/auth/callback as a redirect URL on your
+# Slack app's "Sign in with Slack" (OpenID Connect) config to test real login.
+
 # =====================================================================
 # LOCAL NO-SLACK PROFILE — run the whole thing with no Slack/OpenAI:
 #   AUTH_MODE=bypass
