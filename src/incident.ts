@@ -4,6 +4,8 @@ import type { SlackClient } from "./clients/slack";
 import type { Summarizer } from "./clients/openai";
 import { WebApiSlackClient } from "./clients/slack";
 import { OpenAiSummarizer } from "./clients/openai";
+import { FakeSlackClient } from "./clients/fakeSlack";
+import { FakeSummarizer } from "./clients/fakeOpenai";
 import type { StatusSink } from "./status/sink";
 import type { IncidentStatus } from "./status/types";
 import { buildStatusSink } from "./status";
@@ -11,6 +13,25 @@ import { D1Db } from "./status/d1";
 
 /** Progress-update cadence. See docs/ARCHITECTURE.md §2. */
 export const ALARM_INTERVAL_MS = 15 * 60 * 1000;
+
+/**
+ * Local no-Slack dev: when AUTH_MODE=bypass the DO uses process-wide fake
+ * Slack/OpenAI clients (singletons, so channel state persists across the DO's
+ * requests within the isolate) instead of calling out. The status sink stays
+ * REAL so the internal status page is written to the local D1.
+ * See docs/ARCHITECTURE.md §4 (local dev) and the scripts/fake-incident harness.
+ */
+function isBypass(env: Env): boolean {
+  return env.AUTH_MODE === "bypass";
+}
+let devSlack: FakeSlackClient | undefined;
+let devSummarizer: FakeSummarizer | undefined;
+function getDevSlack(): FakeSlackClient {
+  return (devSlack ??= new FakeSlackClient(true));
+}
+function getDevSummarizer(): FakeSummarizer {
+  return (devSummarizer ??= new FakeSummarizer(true));
+}
 
 /**
  * Test-only injection seam. In production this stays empty and the DO builds
@@ -82,19 +103,18 @@ export class Incident implements DurableObject {
 
   // --- injectable seams (overridden in tests via __setIncidentClientOverrides) ---
   protected buildSlack(): SlackClient {
-    return overrides.slack
-      ? overrides.slack(this.env)
-      : new WebApiSlackClient(this.env.SLACK_BOT_TOKEN);
+    if (overrides.slack) return overrides.slack(this.env);
+    if (isBypass(this.env)) return getDevSlack();
+    return new WebApiSlackClient(this.env.SLACK_BOT_TOKEN);
   }
   protected buildSummarizer(): Summarizer {
-    return overrides.summarizer
-      ? overrides.summarizer(this.env)
-      : new OpenAiSummarizer(this.env.OPENAI_API_KEY);
+    if (overrides.summarizer) return overrides.summarizer(this.env);
+    if (isBypass(this.env)) return getDevSummarizer();
+    return new OpenAiSummarizer(this.env.OPENAI_API_KEY);
   }
   protected buildSink(): StatusSink {
-    return overrides.sink
-      ? overrides.sink(this.env)
-      : buildStatusSink(new D1Db(this.env.DB), this.env);
+    if (overrides.sink) return overrides.sink(this.env);
+    return buildStatusSink(new D1Db(this.env.DB), this.env);
   }
 
   /**
