@@ -53,6 +53,13 @@ export interface Env {
   ONCALL_TWILIO_FROM?: string; // Twilio sending number (E.164)
   ONCALL_CHANNEL_POLICY?: string; // optional override of the L0/L1/L2 channel policy
 
+  // --- Response teams = linked Slack user groups (see ROADMAP "Teams"). ---
+  // Slack usergroup ids (the "S…" ids from usergroups.list). Membership is
+  // managed IN SLACK; we only store which group is which team. Unset = that team
+  // is unconfigured (resolves to an empty roster, never an error).
+  TEAM_ENGINEERING_USERGROUP?: string;
+  TEAM_SUPPORT_USERGROUP?: string;
+
   // --- Partner status-page monitor (see ROADMAP "Alert routing" killer case). ---
   // JSON array of watched partners: [{"id","name","url"}] where url is a
   // Statuspage.io-style summary endpoint (…/api/v2/status.json). Unset = disabled.

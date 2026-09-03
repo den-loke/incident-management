@@ -33,6 +33,7 @@ import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
 import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } from "./oncall/zendesk";
+import { resolveTeams } from "./teams/service";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
@@ -267,6 +268,14 @@ export default {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
       return json(await buildOncallSection(env));
+    }
+
+    // --- Response teams (linked Slack user groups), session-gated. Read-only —
+    // membership is managed in Slack. GET /api/teams ---
+    if (request.method === "GET" && url.pathname === "/api/teams") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      return json({ teams: await resolveTeams(env) });
     }
 
     const ackMatch = url.pathname.match(/^\/api\/oncall\/alerts\/([^/]+)\/ack$/);

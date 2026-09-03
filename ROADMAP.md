@@ -95,7 +95,7 @@ into "point at a Slack group" or "one opinionated shape".
 
 | incident.io nav | Our disposition |
 |---|---|
-| **Teams** (Engineering, Support, …) | **Linked Slack user groups**, not a team-mgmt UI (below). |
+| **Teams** (Engineering, Support, …) | **✅ Shipped** — linked Slack user groups (config), not a team-mgmt UI (below). |
 | On-call › **Alerts** | Have `POST /api/alerts`; **✅ Zendesk webhook receiver** `POST /api/alerts/zendesk` added (below). |
 | On-call › **Alert routing** | **New** — route inbound alerts; **partner status-page monitor** is the killer case (below). |
 | On-call › **Escalations** | **✅ Shipped** — cross-alert escalations list over `oncall_escalations` (below). |
@@ -113,12 +113,15 @@ into "point at a Slack group" or "one opinionated shape".
 
 Detail on the real gaps:
 
-- **Response teams = linked Slack user groups (NOT a team-management UI).** *Small.*
-  Instead of managing team membership in our tool, link a **Slack user group** as the
-  "Engineering response" team and another as the "Customer support response" team;
-  membership is managed in Slack (`usergroups.users.list`). On-call/roles/escalation
-  read the group to know who's eligible. No membership CRUD in our app — one config
-  constant per team (the Slack usergroup id). *Replaces incident.io "Teams".*
+- **Response teams = linked Slack user groups (NOT a team-management UI).** *Small.* **✅ SHIPPED.**
+  Two fixed teams (Engineering, Customer Support) each **link a Slack user group** via a
+  config var (`TEAM_ENGINEERING_USERGROUP` / `TEAM_SUPPORT_USERGROUP` — the `S…` usergroup
+  ids); membership is managed **in Slack**, resolved on demand via `usergroups.users.list`
+  (`src/teams/service.ts`: `resolveTeam`/`resolveTeams`/`isTeamMember`, injectable
+  `UsergroupClient` seam). An unconfigured team resolves to an empty roster
+  (`configured:false`), a lookup failure is swallowed to empty (best-effort). Read-only
+  `GET /api/teams` (session-gated) + a web **Teams** section. No membership CRUD — one
+  usergroup id per team. *Replaces incident.io "Teams".*
 
 - **Routing paths: internal vs external incidents.** *Medium — a real capability.* **✅ SHIPPED.**
   Two fixed incident shapes chosen at declare (`routing_path` on `incidents`, migration

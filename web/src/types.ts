@@ -26,6 +26,15 @@ export const ROUTING_PATH_LABEL: Record<RoutingPath, string> = {
   external: "External",
 };
 
+// --- Response teams (GET /api/teams) — linked Slack user groups, read-only ---
+export interface Team {
+  key: "engineering" | "support";
+  label: string;
+  usergroup_id: string | null;
+  members: string[];
+  configured: boolean;
+}
+
 export interface Component {
   id: string;
   name: string;

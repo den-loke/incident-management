@@ -252,3 +252,7 @@ export function fetchHistory(filters: { severity?: string; routing_path?: string
   const qs = q.toString();
   return getList(`/api/history${qs ? `?${qs}` : ""}`, "incidents");
 }
+
+export function fetchTeams(): Promise<import("@/types").Team[]> {
+  return getList(`/api/teams`, "teams");
+}
