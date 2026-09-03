@@ -20,9 +20,11 @@ import { FakeSlackClient } from "../clients/fakeSlack";
 import { StakeholderStore } from "./store";
 import {
   SEVERITY_LABEL,
+  INCIDENT_SEVERITIES,
   type IncidentSeverity,
   type IncidentStatus,
 } from "../status/types";
+import { declareIncident } from "../incidents/commands";
 
 // Test/bypass seam mirroring the roles service.
 let slackOverride: ((env: Env) => SlackClient) | undefined;
@@ -39,6 +41,15 @@ function buildSlack(env: Env): SlackClient {
 
 // Home-tab button that flips the caller's stakeholder subscription.
 export const STAKEHOLDER_TOGGLE_ACTION = "stakeholder_toggle";
+
+// Home-tab "Declare incident" button + the modal it opens.
+export const DECLARE_ACTION = "declare_incident_open";
+export const DECLARE_MODAL_CALLBACK = "declare_incident_modal";
+// Block/action ids inside the declare modal (used to read view.state on submit).
+const DECLARE_NAME_BLOCK = "declare_name_block";
+const DECLARE_NAME_ACTION = "declare_name_input";
+const DECLARE_SEV_BLOCK = "declare_sev_block";
+const DECLARE_SEV_ACTION = "declare_sev_select";
 
 const STATUS_EMOJI: Record<IncidentStatus, string> = {
   investigating: "🔴",
@@ -108,6 +119,12 @@ export function homeBlocks(
     {
       type: "actions",
       elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Declare incident", emoji: true },
+          style: "danger",
+          action_id: DECLARE_ACTION,
+        },
         {
           type: "button",
           text: {
@@ -218,4 +235,104 @@ export async function inviteStakeholdersToChannel(
   const users = await new StakeholderStore(new D1Db(env.DB)).list();
   if (users.length === 0) return;
   await buildSlack(env).inviteToChannel(channelId, users);
+}
+
+/** Build the "Declare incident" modal view (name input + severity select). */
+export function declareModalView(): unknown {
+  return {
+    type: "modal",
+    callback_id: DECLARE_MODAL_CALLBACK,
+    title: { type: "plain_text", text: "Declare incident" },
+    submit: { type: "plain_text", text: "Declare" },
+    close: { type: "plain_text", text: "Cancel" },
+    blocks: [
+      {
+        type: "input",
+        block_id: DECLARE_NAME_BLOCK,
+        label: { type: "plain_text", text: "What's going on?" },
+        element: {
+          type: "plain_text_input",
+          action_id: DECLARE_NAME_ACTION,
+          placeholder: {
+            type: "plain_text",
+            text: "e.g. Checkout returning 500s",
+          },
+        },
+      },
+      {
+        type: "input",
+        block_id: DECLARE_SEV_BLOCK,
+        label: { type: "plain_text", text: "Severity" },
+        element: {
+          type: "static_select",
+          action_id: DECLARE_SEV_ACTION,
+          initial_option: {
+            text: { type: "plain_text", text: SEVERITY_LABEL.sev2 },
+            value: "sev2",
+          },
+          options: INCIDENT_SEVERITIES.map((s) => ({
+            text: { type: "plain_text", text: SEVERITY_LABEL[s] },
+            value: s,
+          })),
+        },
+      },
+    ],
+  };
+}
+
+/** Open the declare modal in response to the Home-tab button's trigger_id. */
+export async function openDeclareModal(
+  env: Env,
+  triggerId: string,
+): Promise<void> {
+  await buildSlack(env).viewsOpen(triggerId, declareModalView());
+}
+
+// Shape of the parts of a view_submission payload we read.
+interface DeclareSubmission {
+  user?: { id?: string };
+  view?: {
+    callback_id?: string;
+    state?: {
+      values?: Record<
+        string,
+        Record<string, { value?: string; selected_option?: { value?: string } }>
+      >;
+    };
+  };
+}
+
+/**
+ * Handle the declare modal's submission: read the name + severity, declare the
+ * incident (same path as Slack/web), then re-publish the submitter's Home tab
+ * so the new incident shows immediately. Returns true if it was our modal.
+ */
+export async function submitDeclareModal(
+  env: Env,
+  payload: DeclareSubmission,
+): Promise<boolean> {
+  if (payload.view?.callback_id !== DECLARE_MODAL_CALLBACK) return false;
+  const values = payload.view?.state?.values ?? {};
+  const name =
+    values[DECLARE_NAME_BLOCK]?.[DECLARE_NAME_ACTION]?.value?.trim() ?? "";
+  const sev =
+    values[DECLARE_SEV_BLOCK]?.[DECLARE_SEV_ACTION]?.selected_option?.value;
+  const severity = (INCIDENT_SEVERITIES as readonly string[]).includes(sev ?? "")
+    ? (sev as IncidentSeverity)
+    : undefined;
+
+  if (name) {
+    await declareIncident(env, name, undefined, severity);
+  }
+
+  // Refresh the submitter's Home tab so the new incident appears.
+  const userId = payload.user?.id;
+  if (userId) {
+    try {
+      await publishHomeView(env, userId);
+    } catch {
+      /* non-fatal */
+    }
+  }
+  return true;
 }

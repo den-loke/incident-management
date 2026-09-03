@@ -12,6 +12,7 @@ export class FakeSlackClient implements SlackClient {
   postedBlocks: { channel: string; text: string; blocks: unknown[]; ts: string }[] = [];
   reactions: { channel: string; ts: string; emoji: string }[] = [];
   publishedViews: { userId: string; blocks: unknown[] }[] = [];
+  openedViews: { triggerId: string; view: unknown }[] = [];
   invited: { channel: string; userIds: string[] }[] = [];
   private seq = 0;
 
@@ -56,6 +57,11 @@ export class FakeSlackClient implements SlackClient {
     this.publishedViews = this.publishedViews.filter((v) => v.userId !== userId);
     this.publishedViews.push({ userId, blocks });
     if (this.log) console.log(`[fake-slack] viewsPublish(${userId}) ${blocks.length} blocks`);
+  }
+
+  async viewsOpen(triggerId: string, view: unknown): Promise<void> {
+    this.openedViews.push({ triggerId, view });
+    if (this.log) console.log(`[fake-slack] viewsOpen(${triggerId})`);
   }
 
   async inviteToChannel(channel: string, userIds: string[]): Promise<void> {

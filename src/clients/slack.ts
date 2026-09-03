@@ -21,6 +21,8 @@ export interface SlackClient {
   addReaction(channel: string, ts: string, emoji: string): Promise<void>;
   /** Publish a Block Kit view to a user's App Home tab. */
   viewsPublish(userId: string, blocks: unknown[]): Promise<void>;
+  /** Open a modal view in response to a trigger (e.g. a Home-tab button). */
+  viewsOpen(triggerId: string, view: unknown): Promise<void>;
   /** Invite users to a channel (used to add stakeholders to incident channels). */
   inviteToChannel(channel: string, userIds: string[]): Promise<void>;
 }
@@ -95,6 +97,10 @@ export class WebApiSlackClient implements SlackClient {
       user_id: userId,
       view: { type: "home", blocks },
     });
+  }
+
+  async viewsOpen(triggerId: string, view: unknown): Promise<void> {
+    await this.call("views.open", { trigger_id: triggerId, view });
   }
 
   async inviteToChannel(channel: string, userIds: string[]): Promise<void> {

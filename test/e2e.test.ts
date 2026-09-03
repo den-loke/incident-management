@@ -14,7 +14,6 @@
 import {
   SELF,
   env,
-  listDurableObjectIds,
   runInDurableObject,
   runDurableObjectAlarm,
 } from "cloudflare:test";
@@ -139,9 +138,10 @@ describe("E2E: Slack signature (HTTP) + full incident lifecycle", () => {
     expect(inc?.name).toBe("Checkout 500s spiking");
     expect(inc?.status).toBe("investigating");
 
-    const ids = await listDurableObjectIds(env.INCIDENT);
-    expect(ids.length).toBe(1);
-    const stub = env.INCIDENT.get(ids[0]);
+    // Address this incident's DO deterministically by its id (doId === incidentId),
+    // rather than assuming it is the only Durable Object in the isolate — other
+    // tests in the suite may also declare incidents.
+    const stub = env.INCIDENT.get(env.INCIDENT.idFromName(incidentId));
     await runInDurableObject(stub, async (_i, state) => {
       expect(await state.storage.getAlarm()).not.toBeNull();
     });
