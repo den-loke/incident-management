@@ -68,6 +68,10 @@ Through-line unchanged: single-tenant, hard-coded, Slack-native — several of t
 collapse incident.io config screens into "point at a Slack group" or "one fixed
 shape". Rough value order:
 
+- **Conversational control — @-mention the bot** — **✅ DONE** (`src/incidents/intent.ts`:
+  intent classifier + `applyIntent`; `@bot update please`/`set status …`/`this is sev1`/
+  `escalate to @x`/`summary?`/`resolve` dispatched through the shared command functions;
+  new on-demand DO `summarize` command; unknown → help reply).
 - **Routing paths: internal vs external incidents** — **✅ DONE** (`routing_path` on
   incidents, migration 0011; external = Support-Lead-only roles). **On-call is now
   gated by route too** — see alert routing.

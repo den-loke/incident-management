@@ -224,20 +224,16 @@ Detail on the real gaps:
   later addition but explicitly secondary. Auth: a scoped token (single-tenant stance).
   Likely a small MCP server (stdio or MCP-over-HTTP) alongside/served by the Worker.
 
-- **Conversational control — @-mention the bot in-channel (Den, 2026-09-03).** *Medium.*
-  "I should be able to chat to it." In an incident channel, `@Incident Management
-  <instruction>` in natural language should DO the thing — e.g. "@Incident Management
-  update please" → post/draft a status update now; "@… set status to identified",
-  "@… escalate to @alice", "@… what's the summary so far?", "@… resolve". An LLM
-  intent layer maps the mention text to the existing shared command functions
-  (`postIncidentUpdate` / `setSeverity` / `requestResolve` / escalate / summarize-now),
-  so it's a THIRD equivalent surface alongside slash commands and the button panel —
-  all one command path. **The plumbing already exists:** `app_mention` events are
-  already delivered to the router (today they only keep the DO/alarm alive); this item
-  adds the intent→action step. Distinct from the MCP connector (that's Claude-side,
-  analytics-first); this is in-Slack, live-incident, NL control. Keep it channel-scoped
-  (only acts inside a mapped incident channel) and confirm-on-ambiguity. A wrong action
-  should be as cheap to correct as any Slack message.
+- **Conversational control — @-mention the bot in-channel (Den, 2026-09-03).** *Medium.* **✅ SHIPPED.**
+  `@Incident Management <instruction>` in a mapped incident channel is classified to an
+  intent (`src/incidents/intent.ts`: OpenAI JSON-mode classifier + a deterministic
+  rule-based fallback/fake) and dispatched via `applyIntent` through the SHARED command
+  functions — a THIRD surface alongside slash commands + the button panel. Handles:
+  **update** ("update please"), **status** ("set status to identified"), **severity**
+  ("this is sev1"), **escalate** ("escalate to @alice"), **summarize** ("what's the
+  summary?" → new on-demand DO `summarize` command), **resolve** (→ joint-resolve). An
+  unrecognised mention gets a help reply; unmapped channels are ignored. The
+  `app_mention` plumbing already existed; this added the intent→action step.
 
 - **Catalog / Pay calculator — NOT useful for us.** Den: "not sure the catalog is
   useful." incident.io's service/ownership **Catalog** (under "Nexus") is
