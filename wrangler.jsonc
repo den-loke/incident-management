@@ -60,6 +60,7 @@
         "APP_BASE_URL": "https://incident-management-test.lokeglobal.workers.dev",
         "SLACK_CLIENT_ID": "11966909474212.11974798087254",
         "SLACK_TEAM_ID": "T0BUESRDY68",
+        "OPENAI_MODEL": "gpt-5.6-terra",
         "ONCALL_TZ": "Australia/Melbourne",
         "ONCALL_ROTATION_DAYS": "7",
         "ONCALL_ACK_TIMEOUT_MIN": "10"
@@ -94,6 +95,7 @@
       "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
       "vars": {
         "APP_BASE_URL": "https://incident-management.lokeglobal.workers.dev",
+        "OPENAI_MODEL": "gpt-5.6-terra",
         "ONCALL_TZ": "Australia/Melbourne",
         "ONCALL_ROTATION_DAYS": "7",
         "ONCALL_ACK_TIMEOUT_MIN": "10"

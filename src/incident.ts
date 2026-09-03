@@ -112,7 +112,7 @@ export class Incident implements DurableObject {
   protected buildSummarizer(): Summarizer {
     if (overrides.summarizer) return overrides.summarizer(this.env);
     if (isBypass(this.env)) return getDevSummarizer();
-    return new OpenAiSummarizer(this.env.OPENAI_API_KEY);
+    return new OpenAiSummarizer(this.env.OPENAI_API_KEY, this.env.OPENAI_MODEL);
   }
   protected buildSink(): StatusSink {
     if (overrides.sink) return overrides.sink(this.env);
