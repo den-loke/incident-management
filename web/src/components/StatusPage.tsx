@@ -10,6 +10,7 @@ import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
 import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { ReportPanel } from "@/components/ReportPanel";
+import { OnCallSection } from "@/components/OnCallSection";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { ROLE_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
 import { SEVERITY_LABEL } from "@/types";
@@ -208,6 +209,8 @@ export function StatusPage({
           </CardContent>
         </Card>
       </section>
+
+      <OnCallSection />
 
       <section>
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

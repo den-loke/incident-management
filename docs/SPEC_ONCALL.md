@@ -283,7 +283,13 @@ Cases:
    (`<#incident-channel>` + dashboard deep link) on promote, idempotently. Added
    `/incident escalate <@user> [message]` — a direct, human-initiated out-of-band page
    (DMs the target + notes it in-channel), distinct from the on-call ladder.
-6. Web On-call section (rotation + open alerts + override/ack/create buttons).
+6. **✅ DONE.** Web On-call section (rotation + open alerts + override/ack/create buttons).
+   `GET /api/oncall` (session-gated) returns who's on now/next, this week's rotation,
+   and open alerts each with their escalation trail; `POST /api/oncall/alerts/:id/ack`,
+   `.../promote`, and `POST /api/oncall/overrides` reuse the SAME `ackAlert` /
+   `promoteAlertToIncident` / `setOverride` functions the Slack buttons drive. New
+   `OnCallSection` React component (monochrome ShadCN, no side borders) mounted on the
+   status page between Components and Incidents.
 7. `docs/ARCHITECTURE.md` + `ROADMAP.md` updates; move on-call to Shipped.
 
 ### Later (deferred, own spec)

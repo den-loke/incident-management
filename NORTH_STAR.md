@@ -50,18 +50,24 @@ durability beat features.
   sweep cron + Slack notifier + ack), 4 (Twilio SMS/voice paging behind the
   `Notifier` interface + phone-ack webhooks, config-gated on `ONCALL_TWILIO_*`),
   5 (alert→incident bridge — Create-incident button posts a back-link into the
-  alert channel + `/incident escalate` out-of-band paging) **done**.
+  alert channel + `/incident escalate` out-of-band paging), 6 (web On-call
+  section — `GET /api/oncall` + who's-on/rotation/open-alerts UI with
+  ack/create-incident/override buttons reusing the Slack action functions)
+  **done**.
 
 ## Next goal (the frontier)
 
-Finish the on-call epic, in order:
-- **Slice 6** — web On-call section (rotation, open alerts, override/ack/create).
-- **Slice 7** — docs; move on-call to Shipped.
+Finish the on-call epic:
+- **Slice 7** — docs (`docs/ARCHITECTURE.md` env table + on-call overview); move
+  on-call to **Shipped** in `ROADMAP.md`. This is the last slice — after it the
+  on-call epic is complete.
 
-(Slices 4 and 5 are **done**. Slice 4 — Twilio SMS/voice paging + phone-ack
-webhooks — is config-gated on `ONCALL_TWILIO_*` and hard to test end-to-end
-without a real Twilio account, so it ships functionally complete with a
-fake-Twilio test suite. Slice 5 finished the alert→incident bridge surface.)
+(Slices 4, 5, and 6 are **done**. Slice 4 — Twilio SMS/voice paging + phone-ack —
+is config-gated on `ONCALL_TWILIO_*` and ships functionally complete with a
+fake-Twilio test suite, unverified against a real Twilio account. Slice 5
+finished the alert→incident bridge surface. Slice 6 added the web On-call
+section. After slice 7, next up is the roadmap's **incident action buttons in
+Slack** item (make slash commands optional) that Den requested.)
 
 Then the deferred items: real StatuspageSink + the ≥severity Statuspage prompt,
 Recall.ai call transcription, per-env custom domains, the emoji accept/reject

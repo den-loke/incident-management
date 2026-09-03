@@ -29,7 +29,9 @@ import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
-import { escalateNew } from "./oncall/escalation";
+import { escalateNew, ackAlert, promoteAlertToIncident } from "./oncall/escalation";
+import { setOverride } from "./oncall/rotation";
+import { buildOncallSection } from "./oncall/webApi";
 import { handleTwilioSms, handleTwilioVoice } from "./oncall/twilioWebhook";
 import { applyReaction } from "./incidents/suggestions";
 
@@ -222,6 +224,50 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/api/twilio/voice") {
       return handleTwilioVoice(request, env);
+    }
+
+    // --- On-call web section (read + actions), gated behind a Slack session.
+    // Actions reuse the SAME functions the Slack buttons drive. See §6.
+    if (request.method === "GET" && url.pathname === "/api/oncall") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      return json(await buildOncallSection(env));
+    }
+
+    const ackMatch = url.pathname.match(/^\/api\/oncall\/alerts\/([^/]+)\/ack$/);
+    if (request.method === "POST" && ackMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const out = await ackAlert(env, decodeURIComponent(ackMatch[1]), `web:${session.user_id}`);
+      return json(out);
+    }
+
+    const promoteMatch = url.pathname.match(/^\/api\/oncall\/alerts\/([^/]+)\/promote$/);
+    if (request.method === "POST" && promoteMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const res = await promoteAlertToIncident(env, decodeURIComponent(promoteMatch[1]));
+      return res ? json(res) : json({ error: "not_found" }, 404);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/oncall/overrides") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const responder = typeof body?.responder === "string" ? body.responder.trim() : "";
+      const startsAt = typeof body?.starts_at === "string" ? body.starts_at : "";
+      const endsAt = typeof body?.ends_at === "string" ? body.ends_at : "";
+      if (!responder || !startsAt || !endsAt) {
+        return json({ error: "responder_starts_ends_required" }, 400);
+      }
+      if (Number.isNaN(Date.parse(startsAt)) || Number.isNaN(Date.parse(endsAt))) {
+        return json({ error: "invalid_dates" }, 400);
+      }
+      if (Date.parse(endsAt) <= Date.parse(startsAt)) {
+        return json({ error: "end_before_start" }, 400);
+      }
+      const id = await setOverride(env, responder, startsAt, endsAt);
+      return json({ id }, 201);
     }
 
     // --- Incident management (write), gated behind a Slack session. ---

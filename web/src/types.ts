@@ -93,3 +93,48 @@ export const INCIDENT_LABEL: Record<IncidentStatus, string> = {
   monitoring: "Monitoring",
   resolved: "Resolved",
 };
+
+// --- On-call section (GET /api/oncall) ---
+export interface OncallResponder {
+  id: string;
+  name: string;
+  phone: string | null;
+  active: number;
+  sort_order: number;
+}
+
+export interface OncallEscalationTrailRow {
+  level: number;
+  target: string;
+  channel: string; // 'slack' | 'sms' | 'voice'
+  fired_at: string;
+  acked_at: string | null;
+  acked_by: string | null;
+}
+
+export interface OncallOpenAlert {
+  id: string;
+  title: string;
+  body: string | null;
+  severity: string | null;
+  status: "firing" | "ack" | "resolved";
+  incident_id: string | null;
+  received_at: string;
+  trail: OncallEscalationTrailRow[];
+}
+
+export interface OncallRotationShift {
+  responder: string;
+  responder_name: string | null;
+  starts_at: string;
+  ends_at: string;
+  is_override: number;
+}
+
+export interface OncallSection {
+  now: OncallResponder | null;
+  next: OncallResponder | null;
+  responders: OncallResponder[];
+  upcoming: OncallRotationShift[];
+  open_alerts: OncallOpenAlert[];
+}
