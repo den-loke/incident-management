@@ -13,11 +13,12 @@ export class FakeDb implements Db {
 
   async run(sql: string, params: unknown[] = []): Promise<void> {
     if (sql.startsWith("INSERT INTO incidents")) {
-      const [id, name, status, created_at, resolved_at] = params;
+      const [id, name, status, severity, created_at, resolved_at] = params;
       this.incidents.set(id as string, {
         id,
         name,
         status,
+        severity,
         created_at,
         resolved_at,
       });

@@ -12,6 +12,8 @@ import { PostmortemSection } from "@/components/PostmortemSection";
 import { ReportPanel } from "@/components/ReportPanel";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { ROLE_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
+import { SEVERITY_LABEL } from "@/types";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const ROLE_ORDER: IncidentRole[] = ["engineering_lead", "customer_support_lead"];
@@ -78,7 +80,10 @@ function IncidentCard({
             {incident.resolved_at ? ` · Resolved ${fmt(incident.resolved_at)}` : ""}
           </p>
         </div>
-        <IncidentBadge status={incident.status} />
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{SEVERITY_LABEL[incident.severity]}</Badge>
+          <IncidentBadge status={incident.status} />
+        </div>
       </CardHeader>
       <CardContent>
         <RolesLine roles={incident.roles} />
@@ -103,6 +108,7 @@ function IncidentCard({
           <div className="mt-4">
             <IncidentActions
               incidentId={incident.id}
+              severity={incident.severity}
               pending={
                 incident.pending_resolution
                   ? {

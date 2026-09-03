@@ -8,6 +8,7 @@ function fakeSink(tag: string, calls: string[]): StatusSink {
     id: "inc_1",
     name: "n",
     status: "investigating",
+    severity: "sev2",
     created_at: "t",
     resolved_at: null,
   };

@@ -32,8 +32,19 @@ async function postJson(path: string, body: unknown): Promise<void> {
   }
 }
 
-export function declareIncident(name: string, body?: string): Promise<void> {
-  return postJson("/api/incidents", { name, body });
+export function declareIncident(name: string, body?: string, severity?: string): Promise<void> {
+  return postJson("/api/incidents", { name, body, severity });
+}
+
+export function setSeverity(incidentId: string, severity: string): Promise<void> {
+  return fetch(`/api/incidents/${encodeURIComponent(incidentId)}/severity`, {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ severity }),
+  }).then((r) => {
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+  });
 }
 
 export function postUpdate(

@@ -15,7 +15,13 @@ import {
   postIncidentUpdate,
 } from "./incidents/commands";
 import { requestResolve, confirmResolve } from "./incidents/jointResolve";
-import { INCIDENT_STATUSES, type IncidentStatus } from "./status/types";
+import { setSeverity } from "./incidents/severity";
+import {
+  INCIDENT_STATUSES,
+  INCIDENT_SEVERITIES,
+  type IncidentStatus,
+  type IncidentSeverity,
+} from "./status/types";
 import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
@@ -48,6 +54,13 @@ function isIncidentStatus(v: unknown): v is IncidentStatus {
   return (
     typeof v === "string" &&
     (INCIDENT_STATUSES as readonly string[]).includes(v)
+  );
+}
+
+function isIncidentSeverity(v: unknown): v is IncidentSeverity {
+  return (
+    typeof v === "string" &&
+    (INCIDENT_SEVERITIES as readonly string[]).includes(v)
   );
 }
 
@@ -154,8 +167,21 @@ export default {
       const name = typeof body?.name === "string" ? body.name.trim() : "";
       if (!name) return json({ error: "name_required" }, 400);
       const note = typeof body?.body === "string" ? body.body : undefined;
-      const result = await declareIncident(env, name, note);
+      const severity = isIncidentSeverity(body?.severity) ? body.severity : undefined;
+      const result = await declareIncident(env, name, note, severity);
       return json(result, 201);
+    }
+
+    const severityMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/severity$/);
+    if (request.method === "PUT" && severityMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      if (!isIncidentSeverity(body?.severity)) {
+        return json({ error: "invalid_severity" }, 400);
+      }
+      const ok = await setSeverity(env, decodeURIComponent(severityMatch[1]), body.severity);
+      return ok ? json({ ok: true }) : json({ error: "not_found" }, 404);
     }
 
     const updateMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/updates$/);

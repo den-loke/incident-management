@@ -16,6 +16,7 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
+  const [severity, setSeverity] = useState("sev2");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -23,10 +24,11 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setErr(null);
     try {
-      await api.declareIncident(name.trim(), body.trim() || undefined);
+      await api.declareIncident(name.trim(), body.trim() || undefined, severity);
       setOpen(false);
       setName("");
       setBody("");
+      setSeverity("sev2");
       onDone();
     } catch (e) {
       setErr(String((e as Error).message));
@@ -49,6 +51,11 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          <Select value={severity} onChange={(e) => setSeverity(e.target.value)}>
+            <option value="sev1">SEV1 · Major</option>
+            <option value="sev2">SEV2 · Partial</option>
+            <option value="sev3">SEV3 · Minor</option>
+          </Select>
           <Textarea
             placeholder="First update (optional)"
             value={body}
@@ -70,10 +77,12 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
 
 export function IncidentActions({
   incidentId,
+  severity,
   pending,
   onDone,
 }: {
   incidentId: string;
+  severity: string;
   pending: { requested_by: string; note: string | null } | null;
   onDone: () => void;
 }) {
@@ -82,6 +91,19 @@ export function IncidentActions({
   const [status, setStatus] = useState<IncidentStatus>("monitoring");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  async function changeSeverity(next: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.setSeverity(incidentId, next);
+      onDone();
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function close() {
     if (busy) return;
@@ -121,6 +143,16 @@ export function IncidentActions({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
+        <Select
+          className="h-8 w-auto"
+          value={severity}
+          disabled={busy}
+          onChange={(e) => changeSeverity(e.target.value)}
+        >
+          <option value="sev1">SEV1 · Major</option>
+          <option value="sev2">SEV2 · Partial</option>
+          <option value="sev3">SEV3 · Minor</option>
+        </Select>
         <Button variant="outline" size="sm" onClick={() => setMode("update")}>
           Post update
         </Button>
