@@ -13,6 +13,7 @@ import { ReportPanel } from "@/components/ReportPanel";
 import { InsightsSection } from "@/components/InsightsSection";
 import { FollowUpsSection } from "@/components/FollowUpsSection";
 import { OnCallSection } from "@/components/OnCallSection";
+import { TeamsSection } from "@/components/TeamsSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { ROLE_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
@@ -218,6 +219,8 @@ export function StatusPage({
           </CardContent>
         </Card>
       </section>
+
+      <TeamsSection />
 
       <OnCallSection />
 

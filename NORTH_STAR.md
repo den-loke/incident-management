@@ -80,9 +80,10 @@ shape". Rough value order:
   emits a `route:"external"` alert → comms notice + Create-incident button, no page;
   auto-resolves on recovery; `src/oncall/partnerMonitor.ts`). The whole alert-routing +
   upstream/partner story is now shipped.
-- **Response teams = linked Slack user groups** — link an "Engineering response" and a
-  "Customer support response" Slack usergroup; membership managed in Slack, not our
-  app. One config constant per team. Replaces incident.io "Teams".
+- **Response teams = linked Slack user groups** — **✅ DONE** (`src/teams/service.ts`:
+  Engineering + Support each link a Slack usergroup via `TEAM_*_USERGROUP` config,
+  resolved via `usergroups.users.list`; `GET /api/teams` + web Teams section;
+  read-only, membership managed in Slack — no CRUD. Replaces incident.io "Teams").
 - **Scheduled maintenance** — **✅ DONE** (`maintenance_windows`, migration 0013;
   cron reconcile flips components to `under_maintenance` for the window then restores;
   web "Scheduled maintenance" section + `POST /api/maintenance`; no post-mortem).

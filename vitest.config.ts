@@ -37,6 +37,8 @@ export default defineWorkersConfig(async () => {
               // Twilio auth token so inbound-webhook tests can forge a valid
               // X-Twilio-Signature (POST /api/twilio/{sms,voice}). §3a.
               ONCALL_TWILIO_AUTH_TOKEN: "e2e-twilio-token",
+              // A linked Engineering usergroup so /api/teams has one configured team.
+              TEAM_ENGINEERING_USERGROUP: "S_ENG_E2E",
             },
           },
         },
