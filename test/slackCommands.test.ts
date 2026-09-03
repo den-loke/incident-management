@@ -222,6 +222,70 @@ describe("channel-scoped commands", () => {
   });
 });
 
+describe("/incident escalate", () => {
+  let fake: FakeSlackClient;
+  beforeEach(() => {
+    fake = new FakeSlackClient(false);
+    wireFakes(fake);
+  });
+  afterEach(async () => {
+    unwireFakes();
+    await env.DB.prepare("DELETE FROM incident_channels").run();
+    await env.DB.prepare("DELETE FROM incident_updates").run();
+    await env.DB.prepare("DELETE FROM incidents").run();
+  });
+
+  it("DMs the target and notes the escalation in-channel", async () => {
+    const { channelId } = await declareVia("Payments latency");
+    fake.posted.length = 0; // ignore declare-time posts
+    const { text } = await runCommand({
+      text: "escalate <@U_DEV|dev> need eyes on the DB",
+      user_id: "U_BOB",
+      channel_id: channelId,
+    });
+    expect(text).toContain("Paged <@U_DEV>");
+    // DM to the target user id.
+    const dm = fake.posted.find((p) => p.channel === "U_DEV");
+    expect(dm).toBeTruthy();
+    expect(dm!.text).toContain(`<#${channelId}>`);
+    expect(dm!.text).toContain("need eyes on the DB");
+    // Visible note in the incident channel.
+    const inChannel = fake.posted.find((p) => p.channel === channelId);
+    expect(inChannel!.text).toContain("<@U_DEV>");
+  });
+
+  it("works with a bare mention and no message", async () => {
+    const { channelId } = await declareVia("Payments latency");
+    fake.posted.length = 0;
+    const { text } = await runCommand({
+      text: "escalate <@U_DEV>",
+      user_id: "U_BOB",
+      channel_id: channelId,
+    });
+    expect(text).toContain("Paged <@U_DEV>");
+    expect(fake.posted.some((p) => p.channel === "U_DEV")).toBe(true);
+  });
+
+  it("requires a mention", async () => {
+    const { channelId } = await declareVia("Payments latency");
+    const { text } = await runCommand({
+      text: "escalate nobody",
+      user_id: "U_BOB",
+      channel_id: channelId,
+    });
+    expect(text).toContain("mention who to page");
+  });
+
+  it("refuses outside an incident channel", async () => {
+    const { text } = await runCommand({
+      text: "escalate <@U_DEV> help",
+      user_id: "U_BOB",
+      channel_id: "C_RANDOM",
+    });
+    expect(text).toContain("isn't an incident channel");
+  });
+});
+
 describe("help + unknown", () => {
   it("help returns usage", async () => {
     const { text } = await runCommand({ text: "help", user_id: "U_ALICE" });

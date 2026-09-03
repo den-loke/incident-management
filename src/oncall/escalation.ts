@@ -12,7 +12,7 @@ import { D1Db } from "../status/d1";
 import type { AlertRow } from "./alerts";
 import { getAlert } from "./alerts";
 import { whoIsOnCall, nextResponder, type Responder } from "./rotation";
-import { pageAlert } from "./notifier";
+import { pageAlert, notifyPromotion } from "./notifier";
 
 const DEFAULT_ACK_TIMEOUT_MIN = 10;
 const MAX_LEVEL = 2;
@@ -151,8 +151,12 @@ export async function promoteAlertToIncident(
   if (!alert) return null;
   if (alert.incident_id) return { incidentId: alert.incident_id };
 
+  // Capture the channel the alert was PAGING in before we link it (once linked,
+  // alertsChannel() would resolve to the new incident channel instead).
+  const pagingChannel = await alertsChannel(env, alert);
+
   const { declareIncident } = await import("../incidents/commands");
-  const { incidentId } = await declareIncident(
+  const { incidentId, channelId } = await declareIncident(
     env,
     alert.title,
     alert.body ?? undefined,
@@ -162,6 +166,12 @@ export async function promoteAlertToIncident(
     incidentId,
     alertId,
   ]);
+
+  // Post the incident channel link back into the paging channel so responders
+  // watching the alert can jump straight into the incident. (§5)
+  if (pagingChannel && pagingChannel !== channelId) {
+    await notifyPromotion(env, pagingChannel, channelId, incidentId);
+  }
   return { incidentId };
 }
 

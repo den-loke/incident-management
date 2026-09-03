@@ -78,6 +78,7 @@ const USAGE = [  "*/incident* — incident commands:",
   "• `/incident update <text>` — post an update to this incident channel",
   "• `/incident status <investigating|identified|monitoring> [note]` — advance this incident's status",
   "• `/incident resolve [note]` — request resolution (a different person confirms)",
+  "• `/incident escalate <@user> [message]` — page someone for more hands on this incident",
 ].join("\n");
 
 /** Look up the incident that owns a Slack channel (null if the channel is unmapped). */
@@ -138,6 +139,8 @@ export async function handleSlackCommand(
       return handleStatus(payload, arg, env, ctx);
     case "resolve":
       return handleResolve(payload, arg, env, ctx);
+    case "escalate":
+      return handleEscalate(payload, arg, env, ctx);
     case "help":
       return ephemeral(USAGE);
     default:
@@ -240,5 +243,54 @@ async function handleResolve(
   return ephemeral(
     "Resolution requested — a different person needs to confirm in-channel.",
   );
+}
+
+/**
+ * `/incident escalate <@user> [message]` — page a specific person out-of-band
+ * for more hands on the incident the caller is already running (§5). DMs the
+ * target a message linking THIS incident's channel; also drops a note in-channel
+ * so the team sees the escalation. Not the on-call ladder — this is a direct,
+ * human-initiated page, so no role/rotation gate.
+ */
+async function handleEscalate(
+  payload: SlashPayload,
+  arg: string,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  // Slack renders a mention in command text as `<@U123|name>` (or bare `<@U123>`).
+  // (Char class includes '_' to match this suite's U_ALICE-style ids; real Slack
+  // ids are alphanumeric, a strict subset.)
+  const incidentId = await incidentForChannel(env, payload.channel_id);
+  if (!incidentId) return ephemeral(NOT_INCIDENT_CHANNEL);
+  const m = arg.match(/^<@([A-Z0-9_]+)(?:\|[^>]*)?>\s*(.*)$/i);
+  if (!m) {
+    return ephemeral("Usage: `/incident escalate <@user> [message]` — mention who to page.");
+  }
+  const targetId = m[1];
+  const note = m[2].trim();
+
+  ctx.waitUntil(
+    (async () => {
+      const slack = buildSlack(env);
+      const channelMention = `<#${payload.channel_id}>`;
+      const reason = note ? `: “${note}”` : ".";
+      // DM the target (Slack treats a user id as a valid channel for chat.postMessage).
+      await slack
+        .postMessage(
+          targetId,
+          `:rotating_light: <@${payload.user_id}> is pulling you into incident ${channelMention}${reason}`,
+        )
+        .catch(() => {});
+      // Visible note in the incident channel.
+      await slack
+        .postMessage(
+          payload.channel_id,
+          `<@${payload.user_id}> escalated to <@${targetId}> for more hands${reason}`,
+        )
+        .catch(() => {});
+    })(),
+  );
+  return ephemeral(`Paged <@${targetId}> to help on this incident.`);
 }
 
