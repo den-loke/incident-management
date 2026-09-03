@@ -101,7 +101,7 @@ into "point at a Slack group" or "one opinionated shape".
 | On-call › **Escalations** | **List view** over the existing `oncall_escalations` trail (below). |
 | On-call › **Escalation paths** | Ladder is **hard-coded** — no builder; add a **read-only diagram** to explain it (below). |
 | On-call › **Schedules** | **Shipped** — the rotation + overrides. |
-| On-call › **Maintenance** | **New** — scheduled maintenance windows (below). |
+| On-call › **Maintenance** | **✅ Shipped** — scheduled maintenance windows (below). |
 | On-call › **Pay calculator** | **Out of scope** — on-call compensation calc; not our concern. |
 | Response › **Incidents** | **Shipped** — the incident engine + web/Slack management. |
 | Response › **Post-incident flow** | **Hard-coded** fixed checklist — no builder (stance). Surface it (below). |
@@ -157,11 +157,13 @@ Detail on the real gaps:
   application for us, since upstream POS/partner outages are exactly the "communicate,
   don't fix" case.
 
-- **Scheduled maintenance.** *Medium.* A maintenance window is a first-class thing
-  (planned, has a start/end, shows on the internal status page as "under maintenance",
-  distinct from an incident). Declare/schedule ahead; auto-flip affected components to
-  `under_maintenance` for the window; no post-mortem. Ties into the existing component
-  status model.
+- **Scheduled maintenance.** *Medium.* **✅ SHIPPED.** First-class planned windows
+  (`maintenance_windows`, migration 0013) — distinct from incidents (no post-mortem, no
+  Slack channel). Schedule via `POST /api/maintenance` / the web "Scheduled maintenance"
+  section; a cron reconcile on the 1-min sweep (`reconcileMaintenance`) flips affected
+  components to `under_maintenance` when the window starts and back to `operational` when
+  it ends (idempotent, cron-driven — no live timer). Cancel restores components.
+  Surfaced in `/api/status` + the web section. One fixed window shape, no recurrence builder.
 
 - **On-call roster management (engineering only).** *Small — mostly done.* We already
   have the rotation + overrides (on-call epic). What's needed is the **management

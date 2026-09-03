@@ -9,6 +9,7 @@ import type { Env } from "../env";
 import type { Session } from "../auth/session";
 import { RoleStore } from "../roles/store";
 import type { RoleAssignment } from "../roles/types";
+import { listMaintenance, type MaintenanceWindow } from "../maintenance/service";
 
 export interface PendingResolution {
   requested_by: string;
@@ -28,6 +29,7 @@ export interface StatusPayload {
   viewer: { user_id: string; name: string };
   components: Component[];
   incidents: IncidentView[];
+  maintenance: MaintenanceWindow[];
 }
 
 /** Fetch components + recent incidents (with their update timelines) from D1. */
@@ -74,5 +76,6 @@ export async function loadStatus(
     viewer: { user_id: session.user_id, name: session.name },
     components,
     incidents: views,
+    maintenance: await listMaintenance(env),
   };
 }

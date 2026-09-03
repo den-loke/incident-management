@@ -84,7 +84,26 @@ export interface StatusResponse {
   viewer: Viewer;
   components: Component[];
   incidents: Incident[];
+  maintenance: MaintenanceWindow[];
 }
+
+export type MaintenanceStatus = "scheduled" | "active" | "completed" | "cancelled";
+export interface MaintenanceWindow {
+  id: string;
+  title: string;
+  body: string | null;
+  components: string[];
+  starts_at: string;
+  ends_at: string;
+  status: MaintenanceStatus;
+  created_at: string;
+}
+export const MAINTENANCE_LABEL: Record<MaintenanceStatus, string> = {
+  scheduled: "Scheduled",
+  active: "In progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 export const COMPONENT_LABEL: Record<ComponentStatus, string> = {
   operational: "Operational",

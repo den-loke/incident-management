@@ -85,7 +85,7 @@ export function response(
   components: Component[],
   incidents: Incident[],
 ): StatusResponse {
-  return { viewer, components, incidents };
+  return { viewer, components, incidents, maintenance: [] };
 }
 
 export const allOperational = response(componentsAllGreen, []);
