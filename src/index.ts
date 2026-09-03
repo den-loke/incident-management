@@ -262,8 +262,20 @@ export default {
     if (request.method === "POST" && pmPublishMatch) {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
+      const incidentId = decodeURIComponent(pmPublishMatch[1]);
       const store = new PostmortemStore(new D1Db(env.DB));
-      await store.publish(decodeURIComponent(pmPublishMatch[1]));
+      await store.publish(incidentId);
+      // Export action items to Jira on publish (best-effort; no-op if unconfigured).
+      ctx.waitUntil(
+        (async () => {
+          try {
+            const { exportActionItemsToJira } = await import("./postmortem/jiraExport");
+            await exportActionItemsToJira(env, incidentId);
+          } catch {
+            /* non-fatal */
+          }
+        })(),
+      );
       return json({ ok: true });
     }
 

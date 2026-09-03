@@ -125,6 +125,11 @@ export function PostmortemSection({ incidentId }: { incidentId: string }) {
                 <span className={a.done ? "line-through text-muted-foreground" : ""}>
                   {a.description}
                 </span>
+                {a.jira_key && (
+                  <span className="rounded border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {a.jira_key}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

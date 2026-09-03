@@ -22,5 +22,12 @@ export interface Env {
   STATUSPAGE_PAGE_ID?: string;
   RECALLAI_API_KEY?: string; // optional: call transcription (later)
 
+  // --- Optional: enables Jira action-item export on post-mortem publish ---
+  JIRA_BASE_URL?: string; // e.g. https://acme.atlassian.net
+  JIRA_EMAIL?: string; // account email for basic auth
+  JIRA_API_TOKEN?: string; // Atlassian API token
+  JIRA_PROJECT_KEY?: string; // e.g. INC
+  JIRA_ISSUE_TYPE?: string; // defaults to "Task"
+
   AUTH_MODE?: string; // "bypass" for E2E; unset/"slack" in prod
 }
