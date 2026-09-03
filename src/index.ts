@@ -3,6 +3,7 @@ import type { Env } from "./env";
 import { verifySlackRequest } from "./slack/verify";
 import { routeSlackEvent } from "./router";
 import { handleSlackInteractivity } from "./slack/interactivity";
+import { handleSlackCommand } from "./slack/commands";
 import {
   getSession,
   handleCallback,
@@ -18,9 +19,8 @@ import { requestResolve, confirmResolve } from "./incidents/jointResolve";
 import { setSeverity } from "./incidents/severity";
 import {
   INCIDENT_STATUSES,
-  INCIDENT_SEVERITIES,
+  isIncidentSeverity,
   type IncidentStatus,
-  type IncidentSeverity,
 } from "./status/types";
 import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
@@ -60,13 +60,6 @@ function isIncidentStatus(v: unknown): v is IncidentStatus {
   return (
     typeof v === "string" &&
     (INCIDENT_STATUSES as readonly string[]).includes(v)
-  );
-}
-
-function isIncidentSeverity(v: unknown): v is IncidentSeverity {
-  return (
-    typeof v === "string" &&
-    (INCIDENT_SEVERITIES as readonly string[]).includes(v)
   );
 }
 
@@ -166,6 +159,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/slack/interactivity") {
       return handleSlackInteractivity(request, env, ctx);
+    }
+
+    if (request.method === "POST" && url.pathname === "/slack/commands") {
+      return handleSlackCommand(request, env, ctx);
     }
 
     // --- Dashboard auth routes (OIDC). Not HMAC-gated. ---
