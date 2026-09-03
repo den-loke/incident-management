@@ -29,6 +29,7 @@ import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
+import { applyReaction } from "./incidents/suggestions";
 
 export { Incident } from "./incident";
 
@@ -115,6 +116,24 @@ async function handleSlackEvents(
 
   // Ack within 3s; route the event to the right Incident DO asynchronously.
   // Slack retries on non-2xx, so dispatch failures are re-delivered.
+  // Intercept reaction_added → emoji accept/reject on a tracked app suggestion.
+  const envelope = payload as {
+    event?: {
+      type?: string;
+      user?: string;
+      reaction?: string;
+      item?: { type?: string; channel?: string; ts?: string };
+    };
+  };
+  const ev = envelope.event;
+  if (ev?.type === "reaction_added" && ev.item?.type === "message") {
+    const { channel, ts } = ev.item;
+    if (channel && ts && ev.user && ev.reaction) {
+      ctx.waitUntil(applyReaction(env, channel, ts, ev.reaction, ev.user));
+    }
+    return json({ ok: true });
+  }
+
   ctx.waitUntil(
     routeSlackEvent(payload as Parameters<typeof routeSlackEvent>[0], env),
   );

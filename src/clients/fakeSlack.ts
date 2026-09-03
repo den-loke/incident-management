@@ -8,8 +8,9 @@ import type { SlackClient, SlackMessage } from "./slack";
 export class FakeSlackClient implements SlackClient {
   channels = new Map<string, SlackMessage[]>();
   created: string[] = [];
-  posted: { channel: string; text: string }[] = [];
-  postedBlocks: { channel: string; text: string; blocks: unknown[] }[] = [];
+  posted: { channel: string; text: string; ts: string }[] = [];
+  postedBlocks: { channel: string; text: string; blocks: unknown[]; ts: string }[] = [];
+  reactions: { channel: string; ts: string; emoji: string }[] = [];
   private seq = 0;
 
   constructor(private readonly log = false) {}
@@ -27,17 +28,25 @@ export class FakeSlackClient implements SlackClient {
     return id;
   }
 
-  async postMessage(channel: string, text: string): Promise<void> {
+  async postMessage(channel: string, text: string): Promise<string> {
+    const ts = this.nextTs();
     const msgs = this.channels.get(channel) ?? [];
-    msgs.push({ user: "incident-bot", text, ts: this.nextTs() });
+    msgs.push({ user: "incident-bot", text, ts });
     this.channels.set(channel, msgs);
-    this.posted.push({ channel, text });
+    this.posted.push({ channel, text, ts });
     if (this.log) console.log(`[fake-slack] postMessage(${channel}): ${text}`);
+    return ts;
   }
 
-  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void> {
-    this.postedBlocks.push({ channel, text, blocks });
-    await this.postMessage(channel, text);
+  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<string> {
+    const ts = await this.postMessage(channel, text);
+    this.postedBlocks.push({ channel, text, blocks, ts });
+    return ts;
+  }
+
+  async addReaction(channel: string, ts: string, emoji: string): Promise<void> {
+    this.reactions.push({ channel, ts, emoji });
+    if (this.log) console.log(`[fake-slack] addReaction(${channel}, ${ts}, :${emoji}:)`);
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {
