@@ -127,6 +127,30 @@ export interface Insights {
   overall_mttr_seconds: number | null;
 }
 
+// --- Follow-ups + history (GET /api/followups, /api/history) ---
+export interface FollowUp {
+  id: string;
+  description: string;
+  owner: string | null;
+  done: boolean;
+  jira_key: string | null;
+  incident_id: string;
+  incident_name: string;
+  postmortem_status: "draft" | "published";
+  created_at: string;
+}
+export interface HistoryIncident {
+  id: string;
+  name: string;
+  status: IncidentStatus;
+  severity: IncidentSeverity;
+  routing_path: RoutingPath;
+  created_at: string;
+  resolved_at: string | null;
+  has_postmortem: boolean;
+  open_action_items: number;
+}
+
 export const COMPONENT_LABEL: Record<ComponentStatus, string> = {
   operational: "Operational",
   degraded_performance: "Degraded",

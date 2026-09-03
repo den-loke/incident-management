@@ -89,8 +89,9 @@ shape". Rough value order:
 - **Insights dashboards** — **✅ DONE** (`GET /api/insights` + `InsightsSection`:
   volume by severity/path, monthly opened/resolved trend, MTTR per bucket + overall,
   action-item backlog; monochrome bar charts, period selector).
-- **Historical incidents + follow-up action status** — browsable past-incident history
-  + standing "outstanding action items" view.
+- **Historical incidents + follow-up action status** — **✅ DONE** (`GET /api/followups`
+  cross-incident action items + `GET /api/history` browsable past incidents with filters;
+  web "Follow-ups & history" section; `src/reporting/followups.ts`).
 - **Alerts: inbound email via Zendesk** — a mailbox/trigger forwards to `/api/alerts`,
   behind the alert-source abstraction (one adapter).
 - **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;

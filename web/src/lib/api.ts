@@ -231,3 +231,24 @@ export function fetchInsights(period: string): Promise<import("@/types").Insight
     return r.json() as Promise<import("@/types").Insights>;
   });
 }
+
+// --- Follow-ups + history ---
+
+function getList<T>(path: string, key: string): Promise<T[]> {
+  return fetch(path, { credentials: "same-origin", headers: { accept: "application/json" } }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json().then((j) => (j as Record<string, T[]>)[key] ?? []);
+  });
+}
+
+export function fetchFollowUps(onlyOpen: boolean): Promise<import("@/types").FollowUp[]> {
+  return getList(`/api/followups?open=${onlyOpen ? "1" : "0"}`, "followups");
+}
+export function fetchHistory(filters: { severity?: string; routing_path?: string } = {}): Promise<import("@/types").HistoryIncident[]> {
+  const q = new URLSearchParams();
+  if (filters.severity) q.set("severity", filters.severity);
+  if (filters.routing_path) q.set("routing_path", filters.routing_path);
+  const qs = q.toString();
+  return getList(`/api/history${qs ? `?${qs}` : ""}`, "incidents");
+}
