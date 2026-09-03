@@ -89,16 +89,42 @@ describe("homeBlocks", () => {
           severity: "sev1",
           created_at: "2026-09-03T01:00:00Z",
           resolved_at: null,
+          channel: "C0INC1",
         },
       ],
       true,
+      "https://dash.example.com",
     ) as any[];
     const json = JSON.stringify(blocks);
     expect(json).toContain("Stop being a stakeholder");
     expect(json).toContain("Checkout 500s");
     expect(json).toContain("SEV1");
+    // Primary link is the Slack channel mention, with a secondary dashboard link.
+    expect(json).toContain("<#C0INC1>");
+    expect(json).toContain("dashboard ↗");
     const actions = blocks.find((b) => b.type === "actions");
     expect(actions.elements[0].value).toBe("off");
+  });
+
+  it("falls back to the dashboard link when an incident has no channel", () => {
+    const blocks = homeBlocks(
+      [
+        {
+          id: "inc_stk_2",
+          name: "No channel yet",
+          status: "monitoring",
+          severity: "sev3",
+          created_at: "2026-09-03T02:00:00Z",
+          resolved_at: null,
+          channel: null,
+        },
+      ],
+      true,
+      "https://dash.example.com",
+    ) as any[];
+    const json = JSON.stringify(blocks);
+    expect(json).toContain("https://dash.example.com/?incident=inc_stk_2");
+    expect(json).not.toContain("<#");
   });
 });
 
