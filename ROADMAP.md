@@ -4,52 +4,115 @@ The source-of-truth roadmap for the incident-management tool (not just tickets).
 Ordered roughly by sequence, not priority. Architecture rationale lives in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Product stance: single-tenant, opinionated, hard-coded
+
+This tool is **single-tenant** (one Slack workspace per deploy) and deliberately
+**hard-codes the incident process**. incident.io is a multi-tenant SaaS, so most of
+its surface area is *configurability* — builders and settings screens that let
+thousands of teams each define their own process. We serve one team, so that entire
+configuration layer collapses into opinionated defaults written in code.
+
+**Deliberately hard-coded — we will NOT build a config layer for these:**
+- **Custom fields** → fixed schema (`affected_services`, `severity`, `lead`, …).
+- **Severities & statuses** → one fixed enum (`investigating → identified → fixing →
+  resolved`, and a fixed severity scale).
+- **Declare form** → one fixed form.
+- **Workflows / automation** → hard-coded rules in the DO, not a trigger→action
+  builder. (E.g. "on severity ≥ Major, prompt to update the status page.")
+- **Incident roles** → a fixed *set* of two roles (Engineering Lead, Customer
+  Support Lead), **claimable and transferable** via Slack buttons — no
+  role-definition UI, but not statically assigned either (see Shipped).
+- **Post-incident flow** → one fixed checklist, not a builder.
+- **Postmortem template** → one fixed template (the one we already ship).
+- **Status-page components & branding** → hard-coded to our product + our branding.
+
+Recording this so it's a decision, not an oversight: these show up in a competitor
+demo as "features," but for us they are one-line constants, not roadmap items.
+
+**Also out of scope (decided):**
+- **Public / branded customer-facing status page.** We keep only the internal
+  status page. Statuspage.io remains the external mirror if/when its sink is built.
+
 ## Shipped
 - ✅ **Incident engine** — declare / update / resolve via Slack; one Durable Object
   per incident; 15-min alarm → OpenAI summary → progress-update loop.
 - ✅ **Resolve-from-Slack** wiring.
-- ✅ **Web UI (read-only)** — Slack OIDC auth (`team_id` allow-list, signed-cookie
-  session) + React/ShadCN status page rendering components + incident timeline from
-  D1 via `GET /api/status`. Two-env deploy config (`test` / `production`).
+- ✅ **Web UI (read-only status page)** — Slack OIDC auth (`team_id` allow-list,
+  signed-cookie session) + React/ShadCN status page rendering components + incident
+  timeline from D1 via `GET /api/status`. Two-env deploy config (`test` /
+  `production`).
+- ✅ **Web-based incident management** — declare / post update / resolve / edit
+  component status from the dashboard via `POST /api/incidents*`, driving the **same
+  Incident DO command API** Slack uses, so Slack and web stay in sync (shared
+  `src/incidents/commands.ts`).
+- ✅ **Post-mortems** — auto-drafted on resolve (OpenAI JSON-mode over the Slack
+  channel + D1 timeline), human-editable/regenerate/publish in the web UI, action
+  items with toggle. `migrations/0003`, `PostmortemStore`, session-gated API. Never
+  auto-published; never overwrites a published doc.
+- ✅ **Reporting** — aggregate metrics over a period: opened/resolved/open-now,
+  MTTR (open→resolved), MTTA proxy (open→first update after opening; no explicit ack
+  event yet), open action-item backlog. `GET /api/reports?period=…&format=csv`
+  (JSON + CSV export) + a reporting panel in the web UI. (Per-component counts and a
+  scheduled digest deliberately omitted — see notes below.)
+- ✅ **Incident roles (claimable + transferable)** — two roles, **Engineering Lead**
+  (fix + technical calls + escalation) and **Customer Support Lead** (comms + owns
+  severity, informed by ticket volume). Claimed via Slack buttons (a new
+  `/slack/interactivity` endpoint), one holder per role, claiming transfers.
+  `migrations/0004`, shown on the incident card.
+- ✅ **Joint sign-off resolve** — resolving is a two-person handshake: someone
+  requests (Eng Lead typically), a **different** person confirms (Support Lead
+  typically), and the confirm performs the real resolve + post-mortem draft.
+  `migrations/0005`. Confirmer ≠ requester enforced; Support Lead is the intended
+  confirmer but not hard-required (avoids deadlock if unclaimed).
+- ✅ **Slack interactivity endpoint** — `/slack/interactivity` (signed
+  `block_actions`), the surface roles + joint-resolve buttons use and on-call will
+  reuse.
 
-## Next
-- **Web-based incident management.** Write actions from the dashboard — declare,
-  post update, resolve, edit component status — via `POST /api/incidents*` endpoints
-  that call the **same Incident DO command API** Slack already drives, so Slack and
-  web stay in sync with no duplicated logic. Turns the read-only page into the
-  fuller dashboard.
+## Next (capability gaps — real functionality, not config)
 
-## Post-mortems  *(needs its own mini-spec before build)*
-- **Goal:** every resolved incident gets a structured post-mortem / incident review.
-- **Auto-draft:** on resolve, use OpenAI over the incident's Slack channel + the D1
-  update timeline to draft summary, timeline (already captured), impact, root cause,
-  contributing factors, and action items. Fits the existing "agentic summarization"
-  theme and reuses data we already store.
-- **Human-in-the-loop:** the draft is editable (web UI) before finalized — never
-  auto-published as fact.
-- **Storage:** new D1 tables (e.g. `postmortems`, `postmortem_action_items`), linked
-  to `incidents`. Append-only history where sensible.
-- **Surface:** rendered in the web UI on the incident; exportable.
-- **Open questions to resolve first:** exact field set; whether action items get
-  their own tracking/assignees; does it publish anywhere (Slack canvas, Statuspage
-  post-incident note); retention.
+Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
 
-## Reporting  *(needs its own mini-spec before build)*
-- **Goal:** aggregate views across incidents, not just per-incident.
-- **Metrics:** incident count over time, MTTA / MTTR (from status transitions +
-  timestamps we already record), incidents per component, frequency/severity trends,
-  open action-item backlog.
-- **Surface:** a reporting view in the web UI (period filter) + likely a
-  `GET /api/reports` JSON endpoint feeding it. Export (CSV / Markdown / PDF).
-- **Cadence:** consider a scheduled digest (weekly/monthly) — a Cloudflare cron
-  trigger summarizing the period; delivery target TBD (Slack post / email).
-- **Open questions to resolve first:** which metrics matter most day-one; report
-  period defaults; export formats; whether the scheduled digest is in scope now.
+- **Jira integration (action-item export).** *Medium.* **Next up.** On postmortem
+  save/publish, export action items to **Jira** issues (create + link back; keep
+  status in sync where feasible). Behind an abstraction so the tracker is swappable,
+  but Jira is the day-one target. Store the external issue key on
+  `postmortem_action_items`.
+
+- **Severity model.** *Small, but a real decision — not yet built.* Incidents
+  currently have only a lifecycle status (`investigating → identified → monitoring →
+  resolved`), no severity. Adding a fixed severity scale unlocks: "Customer Support
+  Lead owns severity" as a concrete field, and the severity-gated Statuspage prompt
+  below. Do this before/with the Statuspage-prompt work.
+
+- **Status-page prompt (severity-gated, coupled to StatuspageSink).** *Small, but
+  DEFERRED until StatuspageSink is real.* Internal AI summaries stay **automatic** —
+  a wrong internal note is cheaply corrected, so no gate there (decided). The only
+  place a human 👍 is warranted is the **outbound-to-customers** hop: when a
+  qualifying (e.g. ≥ Major) update would mirror to Statuspage.io, prompt "post this
+  to the status page?" first. This is the "one hard-coded workflow" — it *is* this
+  prompt, not a separate concept — and it can't be built until the StatuspageSink
+  exists (see Later) and severity is modelled.
+
+## On-call *(the one large epic — needs its own spec)*
+
+The only pillar hard-coding does **not** shrink much: even a single team needs a real
+rotation, escalation, and alert ingestion. Keep it **minimal and opinionated**, not
+configurable:
+- **Schedule** — one rotation shape (responders, rotation length, change-over);
+  overrides by click. Holiday feed optional.
+- **Escalation path** — one opinionated shape (e.g. Slack during hours → on-call
+  after hours → manager as second line; round-robin over available on-callers).
+- **Alert source** — HTTP source only to start (Datadog/Grafana/Prometheus post to
+  it). Optional AI attribute extraction from the payload later.
+- **Alert routes** — filter → escalate / create incident / forward to Slack; alert→
+  incident button in Slack; simple time+team grouping.
+- **Escalate from Slack** — `/inc escalate <team|user>` with a paging message.
 
 ## Later (deferred)
 - **StatuspageSink** real implementation (currently a stub) + Statuspage
   outbound-webhook subscription (consume component/incident events back).
-- **Recall.ai** call transcription (Zoom / Meet / Teams / Webex) behind the abstraction.
+- **Recall.ai** call transcription (Zoom / Meet / Teams / Webex) behind the
+  abstraction.
 - **Custom domains** per environment (code already origin-relative; DNS only).
 - **Status-page fixtures:** dev-only `?fixture=<name>` preview route rendering
   hardcoded states (all-operational, degraded, partial/major outage, each incident
