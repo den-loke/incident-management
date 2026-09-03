@@ -11,12 +11,14 @@ export interface SlackMessage {
 export interface SlackClient {
   /** Create the incident channel; returns its channel id. */
   createChannel(name: string): Promise<string>;
-  /** Post a message to a channel. */
-  postMessage(channel: string, text: string): Promise<void>;
-  /** Post a Block Kit message (e.g. interactive buttons) with fallback text. */
-  postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void>;
+  /** Post a message to a channel; returns the posted message ts. */
+  postMessage(channel: string, text: string): Promise<string>;
+  /** Post a Block Kit message with fallback text; returns the posted message ts. */
+  postBlocks(channel: string, text: string, blocks: unknown[]): Promise<string>;
   /** Read recent messages from a channel (newest last). */
   history(channel: string, limit?: number): Promise<SlackMessage[]>;
+  /** Add a reaction emoji to a message (used to seed ✅/❌ affordances). */
+  addReaction(channel: string, ts: string, emoji: string): Promise<void>;
 }
 
 const SLACK_API = "https://slack.com/api";
@@ -50,12 +52,18 @@ export class WebApiSlackClient implements SlackClient {
     return data.channel.id;
   }
 
-  async postMessage(channel: string, text: string): Promise<void> {
-    await this.call("chat.postMessage", { channel, text });
+  async postMessage(channel: string, text: string): Promise<string> {
+    const data = await this.call<{ ts: string }>("chat.postMessage", { channel, text });
+    return data.ts;
   }
 
-  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void> {
-    await this.call("chat.postMessage", { channel, text, blocks });
+  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<string> {
+    const data = await this.call<{ ts: string }>("chat.postMessage", {
+      channel,
+      text,
+      blocks,
+    });
+    return data.ts;
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {
@@ -67,5 +75,14 @@ export class WebApiSlackClient implements SlackClient {
       .slice()
       .reverse()
       .map((m) => ({ user: m.user ?? "unknown", text: m.text ?? "", ts: m.ts }));
+  }
+
+  async addReaction(channel: string, ts: string, emoji: string): Promise<void> {
+    try {
+      await this.call("reactions.add", { channel, timestamp: ts, name: emoji });
+    } catch (e) {
+      // already_reacted is benign (e.g. re-seeding an affordance).
+      if (!String(e).includes("already_reacted")) throw e;
+    }
   }
 }

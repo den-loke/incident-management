@@ -10,6 +10,7 @@ import { D1Db } from "../status/d1";
 import type { SlackClient } from "../clients/slack";
 import { WebApiSlackClient } from "../clients/slack";
 import { FakeSlackClient } from "../clients/fakeSlack";
+import { recordSuggestion } from "./suggestions";
 import { resolveIncident } from "../incidents/commands";
 
 export interface ResolutionRequest {
@@ -92,13 +93,25 @@ export async function requestResolve(
     [incidentId, requestedBy, note ?? null],
   );
   try {
-    await buildSlack(env).postBlocks(
+    const slack = buildSlack(env);
+    const ts = await slack.postBlocks(
       channelId,
-      `Resolve requested by <@${requestedBy}>. A different person should confirm.`,
+      `Resolve requested by <@${requestedBy}>. A different person should confirm — react ✅ to confirm.`,
       confirmResolveBlocks(requestedBy, note),
     );
+    // Track the message so a ✅ reaction confirms (emoji path alongside the button).
+    await recordSuggestion(env, {
+      incidentId,
+      channel: channelId,
+      ts,
+      kind: "confirm_resolve",
+      payload: { requestedBy },
+    });
+    // Seed affordances so responders see the ✅/❌ options without discovering them.
+    await slack.addReaction(channelId, ts, "white_check_mark");
+    await slack.addReaction(channelId, ts, "x");
   } catch {
-    /* non-fatal */
+    /* non-fatal — the Block Kit button still works if reaction seeding fails */
   }
   return (await getResolutionRequest(env, incidentId))!;
 }
