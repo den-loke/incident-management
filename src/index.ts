@@ -18,6 +18,7 @@ import { INCIDENT_STATUSES, type IncidentStatus } from "./status/types";
 import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
+import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 
 export { Incident } from "./incident";
 
@@ -165,7 +166,23 @@ export default {
       return json({ ok: true });
     }
 
-    // --- Post-mortems (session-gated). ---
+    // --- Reporting (session-gated). GET /api/reports?period=7d|30d|90d|all&format=csv ---
+    if (request.method === "GET" && url.pathname === "/api/reports") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const period = url.searchParams.get("period") ?? "30d";
+      const { from, to } = periodWindow(period);
+      const report = await buildReport(new D1Db(env.DB), from, to);
+      if (url.searchParams.get("format") === "csv") {
+        return new Response(reportToCsv(report), {
+          headers: {
+            "content-type": "text/csv; charset=utf-8",
+            "content-disposition": `attachment; filename="incident-report-${period}.csv"`,
+          },
+        });
+      }
+      return json(report);
+    }
     const pmMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/postmortem$/);
     if (pmMatch) {
       const session = await getSession(request, env);
