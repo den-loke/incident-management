@@ -30,6 +30,7 @@ export const activeIncident: Incident = {
       assigned_at: "2026-09-02T04:32:00Z",
     },
   ],
+  pending_resolution: null,
   updates: [
     {
       id: "u2",
@@ -55,6 +56,7 @@ export const resolvedIncident: Incident = {
   created_at: "2026-09-01T22:00:00Z",
   resolved_at: "2026-09-01T22:45:00Z",
   roles: [],
+  pending_resolution: null,
   updates: [
     {
       id: "r2",

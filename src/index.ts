@@ -13,8 +13,8 @@ import { loadStatus } from "./ui/statusPage";
 import {
   declareIncident,
   postIncidentUpdate,
-  resolveIncident,
 } from "./incidents/commands";
+import { requestResolve, confirmResolve } from "./incidents/jointResolve";
 import { INCIDENT_STATUSES, type IncidentStatus } from "./status/types";
 import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
@@ -54,6 +54,15 @@ function isIncidentStatus(v: unknown): v is IncidentStatus {
 /** Coerce an unknown JSON field to a trimmed string (empty when absent). */
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** Look up the Slack channel that owns an incident (for posting panels). */
+async function incidentChannel(env: Env, incidentId: string): Promise<string | null> {
+  const row = await new D1Db(env.DB).get<{ channel: string }>(
+    "SELECT channel FROM incident_channels WHERE incident_id = ?",
+    [incidentId],
+  );
+  return row?.channel ?? null;
 }
 
 async function handleSlackEvents(
@@ -167,7 +176,34 @@ export default {
       if (!session) return json({ error: "unauthorized" }, 401);
       const body = await readJson(request);
       const note = typeof body?.body === "string" ? body.body : undefined;
-      await resolveIncident(env, decodeURIComponent(resolveMatch[1]), note);
+      const incidentId = decodeURIComponent(resolveMatch[1]);
+      // Joint sign-off: this REQUESTS resolution; a different person confirms.
+      const channel = await incidentChannel(env, incidentId);
+      const req = await requestResolve(
+        env,
+        incidentId,
+        channel ?? "",
+        `web:${session.user_id}`,
+        note,
+      );
+      return json(req);
+    }
+
+    const resolveConfirmMatch = url.pathname.match(
+      /^\/api\/incidents\/([^/]+)\/resolve\/confirm$/,
+    );
+    if (request.method === "POST" && resolveConfirmMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const outcome = await confirmResolve(
+        env,
+        decodeURIComponent(resolveConfirmMatch[1]),
+        `web:${session.user_id}`,
+      );
+      if (!outcome.ok) {
+        const status = outcome.reason === "same_person" ? 409 : 404;
+        return json({ error: outcome.reason }, status);
+      }
       return json({ ok: true });
     }
 

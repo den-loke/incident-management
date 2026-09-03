@@ -35,6 +35,7 @@ export interface Incident {
   resolved_at: string | null;
   updates: IncidentUpdate[];
   roles: RoleAssignment[];
+  pending_resolution: PendingResolution | null;
 }
 
 export type IncidentRole = "engineering_lead" | "customer_support_lead";
@@ -49,6 +50,12 @@ export interface RoleAssignment {
   role: IncidentRole;
   slack_user_id: string;
   assigned_at: string;
+}
+
+export interface PendingResolution {
+  requested_by: string;
+  requested_at: string;
+  note: string | null;
 }
 
 export interface Viewer {

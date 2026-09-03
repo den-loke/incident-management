@@ -10,9 +10,16 @@ import type { Session } from "../auth/session";
 import { RoleStore } from "../roles/store";
 import type { RoleAssignment } from "../roles/types";
 
+export interface PendingResolution {
+  requested_by: string;
+  requested_at: string;
+  note: string | null;
+}
+
 export interface IncidentView extends Incident {
   updates: IncidentUpdate[];
   roles: RoleAssignment[];
+  pending_resolution: PendingResolution | null;
 }
 
 export interface StatusPayload {
@@ -44,7 +51,11 @@ export async function loadStatus(
       [inc.id],
     );
     const roles = await roleStore.list(inc.id);
-    views.push({ ...inc, updates, roles });
+    const pending = await db.get<PendingResolution>(
+      "SELECT requested_by, requested_at, note FROM incident_resolution_requests WHERE incident_id = ? AND confirmed_at IS NULL",
+      [inc.id],
+    );
+    views.push({ ...inc, updates, roles, pending_resolution: pending ?? null });
   }
 
   return {

@@ -5,6 +5,11 @@ import {
   __resetIncidentClientOverrides,
   __setIncidentClientOverrides,
 } from "../src/incident";
+import {
+  __setJointResolveSlackClient,
+  confirmResolve,
+  getResolutionRequest,
+} from "../src/incidents/jointResolve";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
 import { FakeSummarizer } from "../src/clients/fakeOpenai";
 
@@ -16,8 +21,12 @@ beforeEach(() => {
     slack: () => slack,
     summarizer: () => new FakeSummarizer(),
   });
+  __setJointResolveSlackClient(() => slack);
 });
-afterEach(() => __resetIncidentClientOverrides());
+afterEach(() => {
+  __resetIncidentClientOverrides();
+  __setJointResolveSlackClient(undefined);
+});
 
 function callbackEvent(event: Record<string, unknown>) {
   return { type: "event_callback", event } as Parameters<
@@ -75,7 +84,7 @@ describe("routeSlackEvent", () => {
     expect(routed.incidentId).toBe(declared.incidentId);
   });
 
-  it("resolves the incident on a resolve trigger in its channel", async () => {
+  it("requests resolution on a resolve trigger, then a different person confirms", async () => {
     const declared = await routeSlackEvent(
       callbackEvent({
         type: "message",
@@ -87,7 +96,7 @@ describe("routeSlackEvent", () => {
     );
     const incidentChannel = declared.channelId!;
 
-    const resolved = await routeSlackEvent(
+    const requested = await routeSlackEvent(
       callbackEvent({
         type: "message",
         channel: incidentChannel,
@@ -97,15 +106,44 @@ describe("routeSlackEvent", () => {
       env,
     );
 
-    expect(resolved.action).toBe("resolved");
-    expect(resolved.incidentId).toBe(declared.incidentId);
-    // The DO posted a final resolution message carrying the note.
+    // Joint sign-off: the trigger REQUESTS resolution (does not resolve yet).
+    expect(requested.action).toBe("resolve-requested");
+    expect(requested.incidentId).toBe(declared.incidentId);
+    const pending = await getResolutionRequest(env, declared.incidentId!);
+    expect(pending?.requested_by).toBe("U2");
+    expect(pending?.note).toContain("root cause was a bad deploy");
+
+    // A DIFFERENT person confirms -> actually resolves (final note posted).
+    const outcome = await confirmResolve(env, declared.incidentId!, "U3");
+    expect(outcome.ok).toBe(true);
     const finalPost = slack.posted.at(-1);
-    expect(finalPost?.channel).toBe(incidentChannel);
     expect(finalPost?.text).toContain("root cause was a bad deploy");
   });
 
-  it("treats a bare 'resolve' with no note as a resolve trigger", async () => {
+  it("refuses confirm by the same person who requested", async () => {
+    const declared = await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: "C_ORIGIN_RESOLVE_SAME",
+        user: "U1",
+        text: "declare Same-person guard",
+      }),
+      env,
+    );
+    await routeSlackEvent(
+      callbackEvent({
+        type: "message",
+        channel: declared.channelId!,
+        user: "U2",
+        text: "resolve",
+      }),
+      env,
+    );
+    const outcome = await confirmResolve(env, declared.incidentId!, "U2");
+    expect(outcome).toEqual({ ok: false, reason: "same_person" });
+  });
+
+  it("treats a bare 'resolve' with no note as a resolve trigger (request)", async () => {
     const declared = await routeSlackEvent(
       callbackEvent({
         type: "message",
@@ -116,7 +154,7 @@ describe("routeSlackEvent", () => {
       env,
     );
 
-    const resolved = await routeSlackEvent(
+    const requested = await routeSlackEvent(
       callbackEvent({
         type: "message",
         channel: declared.channelId!,
@@ -126,7 +164,7 @@ describe("routeSlackEvent", () => {
       env,
     );
 
-    expect(resolved.action).toBe("resolved");
+    expect(requested.action).toBe("resolve-requested");
   });
 
   it("does not treat a resolve-like word in an unmapped channel as a trigger", async () => {

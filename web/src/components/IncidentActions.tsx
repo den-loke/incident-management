@@ -70,9 +70,11 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
 
 export function IncidentActions({
   incidentId,
+  pending,
   onDone,
 }: {
   incidentId: string;
+  pending: { requested_by: string; note: string | null } | null;
   onDone: () => void;
 }) {
   const [mode, setMode] = useState<null | "update" | "resolve">(null);
@@ -93,8 +95,21 @@ export function IncidentActions({
     setErr(null);
     try {
       if (mode === "update") await api.postUpdate(incidentId, body.trim(), status);
-      else await api.resolveIncident(incidentId, body.trim() || undefined);
+      else await api.requestResolve(incidentId, body.trim() || undefined);
       close();
+      onDone();
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirm() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.confirmResolve(incidentId);
       onDone();
     } catch (e) {
       setErr(String((e as Error).message));
@@ -105,14 +120,26 @@ export function IncidentActions({
 
   return (
     <>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setMode("update")}>
           Post update
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setMode("resolve")}>
-          Resolve
-        </Button>
+        {pending ? (
+          <>
+            <span className="text-xs text-muted-foreground">
+              Resolve requested by @{pending.requested_by} — a different person confirms.
+            </span>
+            <Button size="sm" onClick={confirm} disabled={busy}>
+              {busy ? "Confirming…" : "Confirm resolve"}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setMode("resolve")}>
+            Request resolve
+          </Button>
+        )}
       </div>
+      {err && <p className="mt-2 text-sm text-muted-foreground">Error: {err}</p>}
 
       <Dialog
         open={mode === "update"}
@@ -145,9 +172,12 @@ export function IncidentActions({
         </div>
       </Dialog>
 
-      <Dialog open={mode === "resolve"} onClose={close} title="Resolve incident">
+      <Dialog open={mode === "resolve"} onClose={close} title="Request resolve">
         <ErrorLine msg={err} />
         <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            This requests resolution. A different person confirms to actually resolve.
+          </p>
           <Textarea
             autoFocus
             placeholder="Resolution note (optional)"
@@ -159,7 +189,7 @@ export function IncidentActions({
               Cancel
             </Button>
             <Button size="sm" onClick={submit} disabled={busy}>
-              {busy ? "Resolving…" : "Resolve incident"}
+              {busy ? "Requesting…" : "Request resolve"}
             </Button>
           </div>
         </div>
