@@ -30,7 +30,8 @@ import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
-import { escalateNew, ackAlert, promoteAlertToIncident } from "./oncall/escalation";
+import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
+import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
 import { buildOncallSection } from "./oncall/webApi";
 import { handleTwilioSms, handleTwilioVoice } from "./oncall/twilioWebhook";
@@ -209,10 +210,12 @@ export default {
         severity: typeof parsed?.severity === "string" ? parsed.severity : undefined,
         dedup_key: typeof parsed?.dedup_key === "string" ? parsed.dedup_key : undefined,
         status,
+        route: parsed?.route === "external" ? "external" : "internal",
       });
-      // A genuinely new firing alert starts the escalation ladder at level 0.
+      // A genuinely new firing alert is ROUTED: internal → page on-call; external
+      // (upstream/partner) → post a comms notice, don't page. See oncall/routing.ts.
       if (outcome.result === "created") {
-        ctx.waitUntil(escalateNew(env, outcome.alert));
+        ctx.waitUntil(routeNewAlert(env, outcome.alert));
       }
       return json(outcome, outcome.result === "created" ? 201 : 200);
     }

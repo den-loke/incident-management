@@ -16,7 +16,11 @@ export interface AlertInput {
   dedup_key?: string;
   status?: "firing" | "resolved";
   source?: string;
+  route?: AlertRoute;
 }
+
+/** Where an alert routes (mirrors incidents.routing_path). See oncall/routing.ts. */
+export type AlertRoute = "internal" | "external";
 
 export interface AlertRow {
   id: string;
@@ -27,6 +31,7 @@ export interface AlertRow {
   severity: string | null;
   status: "firing" | "ack" | "resolved";
   incident_id: string | null;
+  route: AlertRoute;
   received_at: string;
 }
 
@@ -99,8 +104,8 @@ export async function ingestAlert(
 
   const id = uid("alert");
   await db.run(
-    `INSERT INTO oncall_alerts (id, source, dedup_key, title, body, severity, status, received_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'firing', ?)`,
+    `INSERT INTO oncall_alerts (id, source, dedup_key, title, body, severity, status, route, received_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'firing', ?, ?)`,
     [
       id,
       input.source ?? "http",
@@ -108,6 +113,7 @@ export async function ingestAlert(
       input.title,
       input.body ?? null,
       input.severity ?? null,
+      input.route ?? "internal",
       nowIso(),
     ],
   );

@@ -225,6 +225,45 @@ export async function pageAlert(
 }
 
 /**
+ * Post an external-routed alert as a comms notice to the alerts/comms channel
+ * (ONCALL_FALLBACK_CHANNEL) with a Create-incident button — instead of paging
+ * on-call. For upstream/partner signals we communicate; a human promotes to an
+ * incident on the external routing path if warranted. Best-effort. See
+ * oncall/routing.ts + ROADMAP "Alert routing".
+ */
+export async function notifyAlertRouted(env: Env, alert: AlertRow): Promise<void> {
+  const channel = env.ONCALL_FALLBACK_CHANNEL;
+  if (!channel) return; // nowhere to post; no-op (never errors).
+  const slack = buildSlack(env);
+  const sev = alert.severity ? ` (${alert.severity.toUpperCase()})` : "";
+  const blocks = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `:satellite_antenna: *Upstream/partner alert${sev}* — ${alert.title}\n${alert.body ?? ""}\n_Routed external: not paging on-call. Create an incident if we need to communicate._`,
+      },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Create incident" },
+          action_id: `${CREATE_INCIDENT_ACTION_PREFIX}${alert.id}`,
+          value: alert.id,
+        },
+      ],
+    },
+  ];
+  try {
+    await slack.postBlocks(channel, `Upstream alert: ${alert.title}`, blocks);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/**
  * Post an "alert promoted to incident" notice into the alert's paging channel,
  * linking the new incident channel (and the dashboard, if APP_BASE_URL is set).
  * Best-effort — a Slack failure never blocks the promotion. Uses the same seam
