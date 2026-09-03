@@ -30,6 +30,7 @@ import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
 import { escalateNew } from "./oncall/escalation";
+import { handleTwilioSms, handleTwilioVoice } from "./oncall/twilioWebhook";
 import { applyReaction } from "./incidents/suggestions";
 
 export { Incident } from "./incident";
@@ -211,6 +212,16 @@ export default {
         ctx.waitUntil(escalateNew(env, outcome.alert));
       }
       return json(outcome, outcome.result === "created" ? 201 : 200);
+    }
+
+    // --- Inbound Twilio phone-ack webhooks (public, X-Twilio-Signature-verified).
+    // See docs/SPEC_ONCALL.md §3a. SMS reply Y/ACK or voice press-1 acks the alert,
+    // resolving to the same oncall_ack path as the Slack button.
+    if (request.method === "POST" && url.pathname === "/api/twilio/sms") {
+      return handleTwilioSms(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/api/twilio/voice") {
+      return handleTwilioVoice(request, env);
     }
 
     // --- Incident management (write), gated behind a Slack session. ---

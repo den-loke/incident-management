@@ -271,8 +271,13 @@ Cases:
 1. `0008` migration + `whoIsOnCall`/`generateShifts` service + shift-gen cron + rotation tests.
 2. `POST /api/alerts` (HMAC) + dedup/auto-resolve + alerts tests.
 3. Escalation ladder + `sweepEscalations` cron + `Notifier`/`SlackNotifier` + Slack ack/page buttons + tests.
-4. `TwilioNotifier` (SMS + voice) behind the `Notifier` interface + inbound
+4. **✅ DONE.** `TwilioNotifier` (SMS + voice) behind the `Notifier` interface + inbound
    `/api/twilio/sms`/`/api/twilio/voice` ack webhooks + channel policy + Twilio tests.
+   Config-gated on `ONCALL_TWILIO_*`; escalation now records one `oncall_escalations`
+   row per channel (Slack + SMS + voice) at the same level, and the sweep/ack key on
+   ladder **level** (not row count). Phone ack — SMS `Y`/`ACK` matches the sender's
+   `phone`, voice press-1 correlates by Call SID (`provider_sid`) — both resolve to the
+   same `oncall_ack` path as the Slack button.
 5. Alert→incident button + `/inc escalate` + bridge tests.
 6. Web On-call section (rotation + open alerts + override/ack/create buttons).
 7. `docs/ARCHITECTURE.md` + `ROADMAP.md` updates; move on-call to Shipped.

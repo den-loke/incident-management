@@ -47,17 +47,22 @@ durability beat features.
   sequential INC-<n> ids, Slack App Home tab + stakeholder subscriptions.
 - **On-call** (epic, see [`docs/SPEC_ONCALL.md`](docs/SPEC_ONCALL.md)): slices
   1 (rotation + shift-gen cron), 2 (HTTP alert ingestion), 3 (escalation ladder +
-  sweep cron + Slack notifier + ack) **done**.
+  sweep cron + Slack notifier + ack), 4 (Twilio SMS/voice paging behind the
+  `Notifier` interface + phone-ack webhooks, config-gated on `ONCALL_TWILIO_*`)
+  **done**.
 
 ## Next goal (the frontier)
 
 Finish the on-call epic, in order:
-- **Slice 4** — Twilio SMS/voice paging (GoAlert-style) behind the `Notifier`
-  interface; phone ack via inbound webhooks. Config-gated like StatuspageSink.
 - **Slice 5** — alert→incident bridge (core `promoteAlertToIncident` already
-  landed in slice 3; finish the surface).
+  landed in slice 3; finish the surface — `/inc escalate` sub-command + post the
+  incident channel link back into the alert thread).
 - **Slice 6** — web On-call section (rotation, open alerts, override/ack/create).
 - **Slice 7** — docs; move on-call to Shipped.
+
+(Slice 4 — Twilio SMS/voice paging + phone-ack webhooks — is **done**; it is
+config-gated on `ONCALL_TWILIO_*` and hard to test end-to-end without a real
+Twilio account, so it ships functionally complete with a fake-Twilio test suite.)
 
 Then the deferred items: real StatuspageSink + the ≥severity Statuspage prompt,
 Recall.ai call transcription, per-env custom domains, the emoji accept/reject
