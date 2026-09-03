@@ -255,7 +255,9 @@ export function OnCallSection() {
   return (
     <section className="mb-8">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On-call</h2>
+        <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          On-call <span className="opacity-70">(Engineering roster)</span>
+        </h2>
         <OverrideDialog section={section} onDone={load} />
       </div>
 
@@ -267,12 +269,14 @@ export function OnCallSection() {
           {section.next ? (
             <span className="text-muted-foreground">Next: {section.next.name}</span>
           ) : null}
+          <span className="text-muted-foreground">Support is always-on — no rotation.</span>
         </CardContent>
       </Card>
 
       {section.upcoming.length > 0 && (
         <Card className="mb-3">
           <CardContent className="p-0">
+            <div className="px-4 pt-3 text-xs text-muted-foreground">Rotation &amp; overrides</div>
             {section.upcoming.map((s, i) => (
               <div key={`${s.responder}-${s.starts_at}`}>
                 {i > 0 && <Separator />}

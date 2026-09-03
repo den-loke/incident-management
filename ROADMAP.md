@@ -168,11 +168,12 @@ Detail on the real gaps:
   it ends (idempotent, cron-driven — no live timer). Cancel restores components.
   Surfaced in `/api/status` + the web section. One fixed window shape, no recurrence builder.
 
-- **On-call roster management (engineering only).** *Small — mostly done.* We already
-  have the rotation + overrides (on-call epic). What's needed is the **management
-  surface** for the *engineering* roster specifically. **Support is always-on, so it
-  needs no roster** — only Engineering has a rotation. Reframe the On-call section
-  around the eng roster + overrides; drop any notion of a support rotation.
+- **On-call roster management (engineering only).** *Small — mostly done.* **✅ SHIPPED.**
+  The rotation + overrides already existed; this reframes the web **On-call** section as
+  the **Engineering roster** explicitly — header labelled "(Engineering roster)", a
+  "Rotation & overrides" subheading, and a note that **Support is always-on — no
+  rotation** (only Engineering has a rotation). No support-rotation concept existed in
+  code to remove; a label/clarity change (no logic).
 
 - **Escalations list.** *Small.* **✅ SHIPPED.** A standing cross-alert log
   (`listEscalationEvents`, `src/oncall/escalationPath.ts`) — every escalation event
