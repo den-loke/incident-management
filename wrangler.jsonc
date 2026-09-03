@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "incident-management",
+  "account_id": "8cb3be55b69e0f8e39872d083ce7b04e",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -67,7 +68,7 @@
         {
           "binding": "DB",
           "database_name": "incident-management-test",
-          "database_id": "PLACEHOLDER_CREATE_WITH_wrangler_d1_create",
+          "database_id": "04810e8d-fdf1-45e7-98b3-49ef51400c2b",
           "migrations_dir": "migrations"
         }
       ]

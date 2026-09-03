@@ -90,13 +90,6 @@ async function handleSlackEvents(
   // Read the raw body ONCE — signature verification needs the exact bytes.
   const rawBody = await request.text();
 
-  const result = await verifySlackRequest(
-    request.headers,
-    rawBody,
-    env.SLACK_SIGNING_SECRET,
-  );
-  if (!result.ok) return json({ error: result.reason }, 401);
-
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody);
@@ -104,7 +97,12 @@ async function handleSlackEvents(
     return json({ error: "bad_json" }, 400);
   }
 
-  // Slack Events API URL verification handshake.
+  // Slack Events API URL-verification handshake. Answer it BEFORE signature
+  // verification: it is a side-effect-free ownership check Slack sends when you
+  // save the Request URL, and gating it on the signing secret creates a
+  // chicken-and-egg failure (the URL can't verify until the secret is set, and
+  // Slack reports only "didn't respond with the challenge"). Echoing the
+  // challenge here is safe — no state is touched.
   if (
     typeof payload === "object" &&
     payload !== null &&
@@ -113,6 +111,14 @@ async function handleSlackEvents(
     const challenge = (payload as { challenge?: string }).challenge ?? "";
     return json({ challenge });
   }
+
+  // Every real event MUST be signature-verified before it touches any state.
+  const result = await verifySlackRequest(
+    request.headers,
+    rawBody,
+    env.SLACK_SIGNING_SECRET,
+  );
+  if (!result.ok) return json({ error: result.reason }, 401);
 
   // Ack within 3s; route the event to the right Incident DO asynchronously.
   // Slack retries on non-2xx, so dispatch failures are re-delivered.
