@@ -34,6 +34,21 @@ export interface Incident {
   created_at: string;
   resolved_at: string | null;
   updates: IncidentUpdate[];
+  roles: RoleAssignment[];
+}
+
+export type IncidentRole = "engineering_lead" | "customer_support_lead";
+
+export const ROLE_LABEL: Record<IncidentRole, string> = {
+  engineering_lead: "Engineering Lead",
+  customer_support_lead: "Customer Support Lead",
+};
+
+export interface RoleAssignment {
+  incident_id: string;
+  role: IncidentRole;
+  slack_user_id: string;
+  assigned_at: string;
 }
 
 export interface Viewer {

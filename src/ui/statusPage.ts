@@ -7,9 +7,12 @@ import { InternalStatusSink } from "../status/internalSink";
 import type { Component, Incident, IncidentUpdate } from "../status/types";
 import type { Env } from "../env";
 import type { Session } from "../auth/session";
+import { RoleStore } from "../roles/store";
+import type { RoleAssignment } from "../roles/types";
 
 export interface IncidentView extends Incident {
   updates: IncidentUpdate[];
+  roles: RoleAssignment[];
 }
 
 export interface StatusPayload {
@@ -34,12 +37,14 @@ export async function loadStatus(
        LIMIT 25`,
   );
   const views: IncidentView[] = [];
+  const roleStore = new RoleStore(db);
   for (const inc of incidents) {
     const updates = await db.all<IncidentUpdate>(
       "SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at DESC",
       [inc.id],
     );
-    views.push({ ...inc, updates });
+    const roles = await roleStore.list(inc.id);
+    views.push({ ...inc, updates, roles });
   }
 
   return {

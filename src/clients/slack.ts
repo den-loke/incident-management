@@ -13,6 +13,8 @@ export interface SlackClient {
   createChannel(name: string): Promise<string>;
   /** Post a message to a channel. */
   postMessage(channel: string, text: string): Promise<void>;
+  /** Post a Block Kit message (e.g. interactive buttons) with fallback text. */
+  postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void>;
   /** Read recent messages from a channel (newest last). */
   history(channel: string, limit?: number): Promise<SlackMessage[]>;
 }
@@ -50,6 +52,10 @@ export class WebApiSlackClient implements SlackClient {
 
   async postMessage(channel: string, text: string): Promise<void> {
     await this.call("chat.postMessage", { channel, text });
+  }
+
+  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void> {
+    await this.call("chat.postMessage", { channel, text, blocks });
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {
