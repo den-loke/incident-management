@@ -33,6 +33,11 @@ import { ingestAlert } from "./oncall/alerts";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
+import {
+  scheduleMaintenance,
+  listMaintenance,
+  cancelMaintenance,
+} from "./maintenance/service";
 import { buildOncallSection } from "./oncall/webApi";
 import { handleTwilioSms, handleTwilioVoice } from "./oncall/twilioWebhook";
 import { applyReaction } from "./incidents/suggestions";
@@ -272,6 +277,50 @@ export default {
       }
       const id = await setOverride(env, responder, startsAt, endsAt);
       return json({ id }, 201);
+    }
+
+    // --- Scheduled maintenance (session-gated). See ROADMAP "Scheduled maintenance". ---
+    if (request.method === "GET" && url.pathname === "/api/maintenance") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      return json({ windows: await listMaintenance(env) });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/maintenance") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const title = typeof body?.title === "string" ? body.title.trim() : "";
+      const startsAt = typeof body?.starts_at === "string" ? body.starts_at : "";
+      const endsAt = typeof body?.ends_at === "string" ? body.ends_at : "";
+      if (!title || !startsAt || !endsAt) {
+        return json({ error: "title_starts_ends_required" }, 400);
+      }
+      if (Number.isNaN(Date.parse(startsAt)) || Number.isNaN(Date.parse(endsAt))) {
+        return json({ error: "invalid_dates" }, 400);
+      }
+      if (Date.parse(endsAt) <= Date.parse(startsAt)) {
+        return json({ error: "end_before_start" }, 400);
+      }
+      const components = Array.isArray(body?.components)
+        ? (body.components as unknown[]).filter((c): c is string => typeof c === "string")
+        : [];
+      const w = await scheduleMaintenance(env, {
+        title,
+        body: typeof body?.body === "string" ? body.body : undefined,
+        components,
+        starts_at: startsAt,
+        ends_at: endsAt,
+      });
+      return json(w, 201);
+    }
+
+    const maintCancelMatch = url.pathname.match(/^\/api\/maintenance\/([^/]+)\/cancel$/);
+    if (request.method === "POST" && maintCancelMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const ok = await cancelMaintenance(env, decodeURIComponent(maintCancelMatch[1]));
+      return ok ? json({ ok: true }) : json({ error: "not_found" }, 404);
     }
 
     // --- Incident management (write), gated behind a Slack session. ---

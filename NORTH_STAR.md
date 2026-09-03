@@ -79,8 +79,9 @@ shape". Rough value order:
 - **Response teams = linked Slack user groups** — link an "Engineering response" and a
   "Customer support response" Slack usergroup; membership managed in Slack, not our
   app. One config constant per team. Replaces incident.io "Teams".
-- **Scheduled maintenance** — first-class planned windows; flip components to
-  `under_maintenance` for the window; no post-mortem.
+- **Scheduled maintenance** — **✅ DONE** (`maintenance_windows`, migration 0013;
+  cron reconcile flips components to `under_maintenance` for the window then restores;
+  web "Scheduled maintenance" section + `POST /api/maintenance`; no post-mortem).
 - **Insights dashboards** — aggregate MTTR/MTTA/volume/action-item analytics on the
   existing `/api/reports` metrics ("definitely useful").
 - **Historical incidents + follow-up action status** — browsable past-incident history

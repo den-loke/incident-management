@@ -10,6 +10,7 @@ import type { Env } from "../env";
 import { generateShifts } from "./rotation";
 import { sweepEscalations } from "./escalation";
 import { pollPartnerStatus } from "./partnerMonitor";
+import { reconcileMaintenance } from "../maintenance/service";
 
 // Cron expressions declared in wrangler.jsonc [triggers].
 const SHIFT_GEN_CRON = "0 0 * * *"; // daily at 00:00 UTC — top up the rotation
@@ -25,6 +26,8 @@ export async function runOncallScheduled(
       break;
     case ESCALATION_SWEEP_CRON:
       await sweepEscalations(env);
+      // Scheduled maintenance: activate/complete windows on the minute tick.
+      await reconcileMaintenance(env);
       // Partner status-page monitor: piggyback on the 1-min sweep but poll only
       // every 5th minute (partner feeds are cheap but per-minute is impolite).
       // No new cron trigger needed. No-op when PARTNER_STATUS_FEEDS is unset.

@@ -202,3 +202,19 @@ export function setOncallOverride(
     ends_at: endsAt,
   });
 }
+
+// --- Scheduled maintenance ---
+
+export function scheduleMaintenance(input: {
+  title: string;
+  body?: string;
+  components?: string[];
+  starts_at: string;
+  ends_at: string;
+}): Promise<void> {
+  return postJson("/api/maintenance", input);
+}
+
+export function cancelMaintenance(id: string): Promise<void> {
+  return postJson(`/api/maintenance/${encodeURIComponent(id)}/cancel`, {});
+}
