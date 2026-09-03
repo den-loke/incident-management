@@ -108,6 +108,25 @@ Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
   deferred Statuspage prompt plugging into the same layer once StatuspageSink lands.
   (Requested 2026-09-03; parked to keep the first real end-to-end declare unblocked.)
 
+  **Candidate suggestion producers** (the substrate is generic; each is a `kind` +
+  payload the ✅/❌ dispatcher knows how to apply):
+  - **Joint-resolve confirm** — Eng requests resolve → ✅ confirms (reactor ≠
+    requester still enforced). *Exists today.*
+  - **Post-mortem publish** — auto-draft ready → ✅ publish, ❌ keep as draft. *Exists today.*
+  - **Status-page mirror (≥ severity)** — "post this update to the status page?" →
+    ✅ mirror, ❌ internal-only. *Deferred (StatuspageSink).*
+  - **Severity-change suggestion** — AI/ticket-volume signal suggests a bump
+    ("looks like SEV1?") → ✅ applies `setSeverity`, ❌ dismiss.
+  - **Auto-drafted status update** — the 15-min AI summary posted as a *suggested*
+    update for qualifying incidents → ✅ accept as official, ❌ discard/regenerate
+    (internal notes stay automatic by default).
+  - **On-call escalation ack** — paged responder reacts ✅ to acknowledge and stop
+    the ladder (emoji path alongside the Block-Kit Ack button). *Ties to on-call slice 3.*
+  - **Role claim** — ✅ on the "Take Engineering/Support Lead" prompt claims the role
+    (emoji alternative to the Block-Kit button).
+  Start with the two that exist today; the rest attach to the same table + dispatcher
+  as their producers land.
+
 ## On-call *(the one large epic — needs its own spec)*
 
 The only pillar hard-coding does **not** shrink much: even a single team needs a real
