@@ -60,6 +60,10 @@ export interface Env {
   TEAM_ENGINEERING_USERGROUP?: string;
   TEAM_SUPPORT_USERGROUP?: string;
 
+  // --- MCP connector (see ROADMAP "MCP connector"). Read-only analytics over
+  // MCP-over-HTTP at POST /mcp. Bearer token; unset = connector disabled. ---
+  MCP_TOKEN?: string;
+
   // --- Partner status-page monitor (see ROADMAP "Alert routing" killer case). ---
   // JSON array of watched partners: [{"id","name","url"}] where url is a
   // Statuspage.io-style summary endpoint (…/api/v2/status.json). Unset = disabled.

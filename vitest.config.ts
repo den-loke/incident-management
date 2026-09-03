@@ -39,6 +39,8 @@ export default defineWorkersConfig(async () => {
               ONCALL_TWILIO_AUTH_TOKEN: "e2e-twilio-token",
               // A linked Engineering usergroup so /api/teams has one configured team.
               TEAM_ENGINEERING_USERGROUP: "S_ENG_E2E",
+              // MCP connector bearer token so /mcp tests can authenticate.
+              MCP_TOKEN: "e2e-mcp-token",
             },
           },
         },
