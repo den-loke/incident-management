@@ -26,6 +26,7 @@ import {
 import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
+import { buildPostIncidentFlow } from "./postmortem/postIncidentFlow";
 import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { buildInsights } from "./reporting/insights";
 import { listFollowUps, listIncidentHistory } from "./reporting/followups";
@@ -483,6 +484,23 @@ export default {
         }),
       });
     }
+    // --- Post-incident flow: read-only view of the FIXED checklist for an
+    // incident (derived from incident status + post-mortem + action items).
+    // GET /api/incidents/:id/post-incident-flow (session-gated). ---
+    const pifMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/post-incident-flow$/);
+    if (request.method === "GET" && pifMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const incidentId = decodeURIComponent(pifMatch[1]);
+      const db = new D1Db(env.DB);
+      const incident = await db.get<{ status: IncidentStatus }>(
+        "SELECT status FROM incidents WHERE id = ?",
+        [incidentId],
+      );
+      if (!incident) return json({ error: "not_found" }, 404);
+      return json(await buildPostIncidentFlow(db, incidentId, incident.status));
+    }
+
     const pmMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/postmortem$/);
     if (pmMatch) {
       const session = await getSession(request, env);

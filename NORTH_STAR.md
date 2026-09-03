@@ -99,6 +99,11 @@ shape". Rough value order:
   `docs/DEPLOY.md`. Webhook, not mail ingestion — one adapter, alert model unchanged).
 - **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
   support is always-on so has no rotation.
+- **Post-incident flow (surface the fixed checklist)** — **✅ DONE**
+  (`src/postmortem/postIncidentFlow.ts`: `buildPostIncidentFlow` derives the fixed
+  checklist per incident — resolved → drafted → items captured → items filed → published;
+  `GET /api/incidents/:id/post-incident-flow`; web Post-incident flow checklist. Read-only,
+  no builder).
 - **Escalations list + read-only escalation-path diagram** — **✅ DONE**
   (`src/oncall/escalationPath.ts`: `listEscalationEvents` cross-alert log +
   `buildEscalationPath` config-derived ladder; both folded into `GET /api/oncall` as

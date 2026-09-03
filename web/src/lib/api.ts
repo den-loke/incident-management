@@ -123,6 +123,22 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
 export function getPostmortem(incidentId: string): Promise<Postmortem | null> {
   return getJson(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem`);
 }
+
+export type ChecklistState = "done" | "pending" | "blocked";
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  state: ChecklistState;
+  detail: string;
+}
+export interface PostIncidentFlow {
+  incident_id: string;
+  complete: boolean;
+  items: ChecklistItem[];
+}
+export function getPostIncidentFlow(incidentId: string): Promise<PostIncidentFlow | null> {
+  return getJson(`/api/incidents/${encodeURIComponent(incidentId)}/post-incident-flow`);
+}
 export function generatePostmortem(incidentId: string): Promise<Postmortem> {
   return fetch(`/api/incidents/${encodeURIComponent(incidentId)}/postmortem`, {
     method: "POST",
