@@ -1,22 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { StatusPage } from "@/components/StatusPage";
+import { StatusPageView } from "@/pages/StatusPageView";
 import { LoginScreen } from "@/components/LoginScreen";
-import {
-  allOperational,
-  activeIncidentState,
-  emptyState,
-} from "./fixtures";
+import { allOperational, activeIncidentState, emptyState } from "./fixtures";
 
-// StatusPage renders purely from props; onChange is a no-op here, so stories
-// never touch /api/* — this is the Storybook-style harness for screenshots.
-const meta: Meta<typeof StatusPage> = {
+// StatusPageView renders purely from `data` — stories never touch /api/*.
+// This is the Storybook harness used for screenshots.
+const meta: Meta<typeof StatusPageView> = {
   title: "Pages/StatusPage",
-  component: StatusPage,
-  args: { onChange: () => {} },
+  component: StatusPageView,
 };
 export default meta;
 
-type Story = StoryObj<typeof StatusPage>;
+type Story = StoryObj<typeof StatusPageView>;
 
 export const AllOperational: Story = { args: { data: allOperational } };
 export const ActiveIncident: Story = { args: { data: activeIncidentState } };

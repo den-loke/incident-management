@@ -41,6 +41,13 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   signed-cookie session) + React/ShadCN status page rendering components + incident
   timeline from D1 via `GET /api/status`. Two-env deploy config (`test` /
   `production`).
+- ✅ **Multi-page web UI** — the SPA was one long scroll; split into a persistent
+  left-nav shell (`AppShell`) + client-side hash routing (`src/lib/router.tsx`, no
+  dependency, no server deep-link fallback needed) across seven pages: **Status,
+  Incidents (list → `#/incidents/:id` detail), On-call, Maintenance, Follow-ups,
+  Insights, Teams**. Simpler than incident.io — no Settings pages (config is
+  hard-coded, per stance). Existing sections reused unchanged; shared incident card
+  extracted to `src/components/incidentUi.tsx`.
 - ✅ **Web-based incident management** — declare / post update / resolve / edit
   component status from the dashboard via `POST /api/incidents*`, driving the **same
   Incident DO command API** Slack uses, so Slack and web stay in sync (shared
