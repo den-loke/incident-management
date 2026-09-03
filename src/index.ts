@@ -20,6 +20,7 @@ import { setSeverity } from "./incidents/severity";
 import {
   INCIDENT_STATUSES,
   isIncidentSeverity,
+  isRoutingPath,
   type IncidentStatus,
 } from "./status/types";
 import { D1Db } from "./status/d1";
@@ -281,7 +282,8 @@ export default {
       if (!name) return json({ error: "name_required" }, 400);
       const note = typeof body?.body === "string" ? body.body : undefined;
       const severity = isIncidentSeverity(body?.severity) ? body.severity : undefined;
-      const result = await declareIncident(env, name, note, severity);
+      const routingPath = isRoutingPath(body?.routing_path) ? body.routing_path : undefined;
+      const result = await declareIncident(env, name, note, severity, routingPath);
       return json(result, 201);
     }
 

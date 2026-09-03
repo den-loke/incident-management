@@ -7,7 +7,7 @@ import type { Env } from "../env";
 import { D1Db } from "../status/d1";
 import { nextIncidentNumber, formatIncidentId } from "../counter";
 import type { IncidentStatus } from "../status/types";
-import type { IncidentSeverity } from "../status/types";
+import type { IncidentSeverity, RoutingPath } from "../status/types";
 
 /** Build an internal command request for a DO stub. */
 export function commandRequest(command: unknown): Request {
@@ -38,6 +38,7 @@ export async function declareIncident(
   name: string,
   body?: string,
   severity?: IncidentSeverity,
+  routingPath?: RoutingPath,
 ): Promise<DeclareResult> {
   // Sequential, human-meaningful id: "INC-1", "INC-2", … The counter DO is the
   // single serialization point so concurrent declares get distinct numbers.
@@ -47,7 +48,7 @@ export async function declareIncident(
   const stub = stubForIncident(env, incidentId);
 
   const res = await stub.fetch(
-    commandRequest({ cmd: "declare", name, body, id: incidentId, severity }),
+    commandRequest({ cmd: "declare", name, body, id: incidentId, severity, routingPath }),
   );
   const { channelId } = (await res.json()) as { channelId: string };
 
@@ -57,10 +58,12 @@ export async function declareIncident(
   );
 
   // Post the claimable-roles panel to the new channel. Best-effort: a failure
-  // here must not fail the declare. Lazy import avoids a module cycle.
+  // here must not fail the declare. Lazy import avoids a module cycle. External
+  // (upstream/partner) incidents are Support-Lead-only, so the panel offers only
+  // the roles this routing path allows.
   try {
     const { postRolesPanel } = await import("../roles/service");
-    await postRolesPanel(env, incidentId, channelId);
+    await postRolesPanel(env, incidentId, channelId, routingPath ?? "internal");
   } catch {
     /* non-fatal: the panel can be re-posted later */
   }

@@ -32,8 +32,13 @@ async function postJson(path: string, body: unknown): Promise<void> {
   }
 }
 
-export function declareIncident(name: string, body?: string, severity?: string): Promise<void> {
-  return postJson("/api/incidents", { name, body, severity });
+export function declareIncident(
+  name: string,
+  body?: string,
+  severity?: string,
+  routingPath?: string,
+): Promise<void> {
+  return postJson("/api/incidents", { name, body, severity, routing_path: routingPath });
 }
 
 export function setSeverity(incidentId: string, severity: string): Promise<void> {
