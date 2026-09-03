@@ -19,6 +19,11 @@ import {
   openDeclareModal,
   submitDeclareModal,
 } from "../stakeholders/service";
+import {
+  CONTROL_ACTION_IDS,
+  handleControlAction,
+  submitControlModal,
+} from "../incidents/controls";
 
 interface BlockActionsPayload {
   type?: string;
@@ -65,9 +70,20 @@ export async function handleSlackInteractivity(
   }
 
   if (payload?.type === "view_submission") {
-    // Modal submitted (e.g. the declare-incident modal). Do the work in the
-    // background and ack with an empty 200 to close the modal.
-    ctx.waitUntil(submitDeclareModal(env, payload as Parameters<typeof submitDeclareModal>[1]));
+    // Modal submitted. Do the work in the background and ack with an empty 200
+    // to close the modal. Try the incident-control modals first (update/status/
+    // escalate/severity), then the declare modal.
+    ctx.waitUntil(
+      (async () => {
+        const handled = await submitControlModal(
+          env,
+          payload as Parameters<typeof submitControlModal>[1],
+        );
+        if (!handled) {
+          await submitDeclareModal(env, payload as Parameters<typeof submitDeclareModal>[1]);
+        }
+      })(),
+    );
     return new Response(null, { status: 200 });
   }
 
@@ -83,6 +99,32 @@ export async function handleSlackInteractivity(
       }
       return new Response(null, { status: 200 });
     }
+
+    // Incident-controls buttons open a modal (views.open needs the trigger_id
+    // promptly) or act directly (resolve). Resolve the owning incident from the
+    // channel, then handle inline before acking.
+    if (action?.action_id && CONTROL_ACTION_IDS.includes(action.action_id) && payload.channel?.id) {
+      try {
+        const row = await new D1Db(env.DB).get<{ incident_id: string }>(
+          "SELECT incident_id FROM incident_channels WHERE channel = ?",
+          [payload.channel.id],
+        );
+        if (row) {
+          await handleControlAction(
+            env,
+            action.action_id,
+            row.incident_id,
+            payload.channel.id,
+            payload.user?.id ?? "unknown",
+            payload.trigger_id ?? "",
+          );
+        }
+      } catch {
+        /* non-fatal */
+      }
+      return new Response(null, { status: 200 });
+    }
+
     ctx.waitUntil(applyBlockActions(payload, env));
   }
 

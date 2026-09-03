@@ -65,6 +65,15 @@ export async function declareIncident(
     /* non-fatal: the panel can be re-posted later */
   }
 
+  // Post the incident-controls panel (all actions as buttons — slash commands
+  // optional). Best-effort; lazy import avoids a module cycle.
+  try {
+    const { postControlsPanel } = await import("./controls");
+    await postControlsPanel(env, channelId);
+  } catch {
+    /* non-fatal */
+  }
+
   // Invite every standing stakeholder to the new channel. Best-effort — a
   // Slack failure must not fail the declare. Opting in from the Home tab once
   // covers all future incidents. Lazy import avoids a module cycle.
