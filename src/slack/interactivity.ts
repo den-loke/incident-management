@@ -10,6 +10,10 @@ import { D1Db } from "../status/d1";
 import { CLAIM_ACTION_PREFIX, claimRole } from "../roles/service";
 import { isIncidentRole } from "../roles/types";
 import { CONFIRM_RESOLVE_ACTION, confirmResolve } from "../incidents/jointResolve";
+import {
+  STAKEHOLDER_TOGGLE_ACTION,
+  toggleStakeholder,
+} from "../stakeholders/service";
 
 interface BlockActionsPayload {
   type?: string;
@@ -64,12 +68,21 @@ async function applyBlockActions(
   payload: BlockActionsPayload,
   env: Env,
 ): Promise<void> {
-  const channelId = payload.channel?.id;
   const userId = payload.user?.id;
   const action = payload.actions?.[0];
-  if (!channelId || !userId || !action?.action_id) return;
+  if (!userId || !action?.action_id) return;
 
-  // Resolve the incident that owns this channel (shared by all actions).
+  // App Home tab: stakeholder opt-in/opt-out. This has no incident channel, so
+  // it MUST be handled before the channel-scoped lookup below.
+  if (action.action_id === STAKEHOLDER_TOGGLE_ACTION) {
+    await toggleStakeholder(env, userId, action.value !== "off");
+    return;
+  }
+
+  const channelId = payload.channel?.id;
+  if (!channelId) return;
+
+  // Resolve the incident that owns this channel (shared by the actions below).
   const row = await new D1Db(env.DB).get<{ incident_id: string }>(
     "SELECT incident_id FROM incident_channels WHERE channel = ?",
     [channelId],

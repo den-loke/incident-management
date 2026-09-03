@@ -6,6 +6,7 @@ import {
   declareIncident,
 } from "./incidents/commands";
 import { requestResolve } from "./incidents/jointResolve";
+import { publishHomeView } from "./stakeholders/service";
 
 /**
  * Routes verified Slack events to the right Incident Durable Object.
@@ -38,13 +39,20 @@ interface SlackEvent {
   text?: string;
   ts?: string;
   bot_id?: string;
+  tab?: string;
 }
 
 const DECLARE_RE = /^(?:\/incident\s+)?declare\b\s*/i;
 const RESOLVE_RE = /^(?:\/incident\s+)?resolve\b\s*/i;
 
 export interface RouteResult {
-  action: "declared" | "routed" | "resolved" | "resolve-requested" | "ignored";
+  action:
+    | "declared"
+    | "routed"
+    | "resolved"
+    | "resolve-requested"
+    | "home-published"
+    | "ignored";
   incidentId?: string;
   channelId?: string;
 }
@@ -83,6 +91,15 @@ export async function routeSlackEvent(
     return { action: "ignored" };
   }
   const event = envelope.event;
+  // App Home tab opened → (re)publish the Home view for that user.
+  if (event.type === "app_home_opened" && event.user) {
+    // Slack sends app_home_opened for the Home, Messages, and About tabs; only
+    // publish for the Home tab (tab omitted on some payloads → treat as home).
+    if (!event.tab || event.tab === "home") {
+      await publishHomeView(env, event.user);
+    }
+    return { action: "home-published" };
+  }
   if (event.type !== "message" && event.type !== "app_mention") {
     return { action: "ignored" };
   }

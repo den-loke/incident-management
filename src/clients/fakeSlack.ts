@@ -11,6 +11,8 @@ export class FakeSlackClient implements SlackClient {
   posted: { channel: string; text: string; ts: string }[] = [];
   postedBlocks: { channel: string; text: string; blocks: unknown[]; ts: string }[] = [];
   reactions: { channel: string; ts: string; emoji: string }[] = [];
+  publishedViews: { userId: string; blocks: unknown[] }[] = [];
+  invited: { channel: string; userIds: string[] }[] = [];
   private seq = 0;
 
   constructor(private readonly log = false) {}
@@ -47,6 +49,19 @@ export class FakeSlackClient implements SlackClient {
   async addReaction(channel: string, ts: string, emoji: string): Promise<void> {
     this.reactions.push({ channel, ts, emoji });
     if (this.log) console.log(`[fake-slack] addReaction(${channel}, ${ts}, :${emoji}:)`);
+  }
+
+  async viewsPublish(userId: string, blocks: unknown[]): Promise<void> {
+    // Keep only the latest published view per user (mirrors Slack's semantics).
+    this.publishedViews = this.publishedViews.filter((v) => v.userId !== userId);
+    this.publishedViews.push({ userId, blocks });
+    if (this.log) console.log(`[fake-slack] viewsPublish(${userId}) ${blocks.length} blocks`);
+  }
+
+  async inviteToChannel(channel: string, userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    this.invited.push({ channel, userIds });
+    if (this.log) console.log(`[fake-slack] inviteToChannel(${channel}, ${userIds.join(",")})`);
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {
