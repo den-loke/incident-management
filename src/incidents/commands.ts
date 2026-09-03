@@ -6,6 +6,7 @@
 import type { Env } from "../env";
 import { D1Db } from "../status/d1";
 import type { IncidentStatus } from "../status/types";
+import type { IncidentSeverity } from "../status/types";
 
 /** Build an internal command request for a DO stub. */
 export function commandRequest(command: unknown): Request {
@@ -35,12 +36,13 @@ export async function declareIncident(
   env: Env,
   name: string,
   body?: string,
+  severity?: IncidentSeverity,
 ): Promise<DeclareResult> {
   const incidentId = `inc_${crypto.randomUUID()}`;
   const stub = stubForIncident(env, incidentId);
 
   const res = await stub.fetch(
-    commandRequest({ cmd: "declare", name, body, id: incidentId }),
+    commandRequest({ cmd: "declare", name, body, id: incidentId, severity }),
   );
   const { channelId } = (await res.json()) as { channelId: string };
 

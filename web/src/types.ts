@@ -12,6 +12,14 @@ export type IncidentStatus =
   | "monitoring"
   | "resolved";
 
+export type IncidentSeverity = "sev1" | "sev2" | "sev3";
+
+export const SEVERITY_LABEL: Record<IncidentSeverity, string> = {
+  sev1: "SEV1",
+  sev2: "SEV2",
+  sev3: "SEV3",
+};
+
 export interface Component {
   id: string;
   name: string;
@@ -31,6 +39,7 @@ export interface Incident {
   id: string;
   name: string;
   status: IncidentStatus;
+  severity: IncidentSeverity;
   created_at: string;
   resolved_at: string | null;
   updates: IncidentUpdate[];
