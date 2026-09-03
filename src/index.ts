@@ -35,6 +35,7 @@ import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
 import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } from "./oncall/zendesk";
 import { resolveTeams } from "./teams/service";
+import { StakeholderStore } from "./stakeholders/store";
 import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
@@ -277,7 +278,12 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/teams") {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
-      return json({ teams: await resolveTeams(env) });
+      const teams = await resolveTeams(env);
+      // Home-tab opt-in stakeholders are a separate source from the linked
+      // Stakeholders usergroup; surface both so the web Teams page lists who
+      // actually gets invited to new incident channels.
+      const stakeholder_optins = await new StakeholderStore(new D1Db(env.DB)).list();
+      return json({ teams, stakeholder_optins });
     }
 
     // --- MCP connector (analytics-first, read-only). MCP-over-HTTP: a client

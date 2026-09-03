@@ -233,12 +233,23 @@ export async function toggleStakeholder(
 /**
  * Invite every standing stakeholder to a new incident's channel. Best-effort:
  * a Slack failure here must never fail the declare. Called from declareIncident.
+ * Stakeholders come from TWO sources, unioned + de-duped:
+ *   1. the Home-tab opt-in list (incident_stakeholders), and
+ *   2. the linked Stakeholders Slack usergroup (TEAM_STAKEHOLDERS_USERGROUP).
  */
 export async function inviteStakeholdersToChannel(
   env: Env,
   channelId: string,
 ): Promise<void> {
-  const users = await new StakeholderStore(new D1Db(env.DB)).list();
+  const optIn = await new StakeholderStore(new D1Db(env.DB)).list();
+  let groupMembers: string[] = [];
+  try {
+    const { resolveTeam } = await import("../teams/service");
+    groupMembers = (await resolveTeam(env, "stakeholders")).members;
+  } catch {
+    /* non-fatal: opt-in list still invited */
+  }
+  const users = Array.from(new Set([...optIn, ...groupMembers]));
   if (users.length === 0) return;
   await buildSlack(env).inviteToChannel(channelId, users);
 }

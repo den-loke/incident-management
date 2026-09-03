@@ -234,6 +234,7 @@ test, not the backbone.
 | `PARTNER_STATUS_FEEDS` | JSON `[{id,name,url}]` of upstream status pages to monitor (Statuspage `…/api/v2/status.json`); unset = disabled | ⬜ optional |
 | `ZENDESK_WEBHOOK_SECRET` | HMAC secret for `POST /api/alerts/zendesk` (Zendesk trigger webhook); unset = receiver disabled | ⬜ optional |
 | `TEAM_ENGINEERING_USERGROUP` / `TEAM_SUPPORT_USERGROUP` | Slack usergroup ids linked as the Engineering / Customer Support response teams; membership managed in Slack, resolved via `usergroups.users.list`; unset = that team unconfigured | ⬜ optional |
+| `TEAM_STAKEHOLDERS_USERGROUP` | Slack usergroup id linked as the Stakeholders team; its members are auto-invited to every new incident channel (unioned with the Home-tab opt-in list); unset = only opt-ins invited | ⬜ optional |
 | `MCP_TOKEN` | Bearer token for the read-only MCP analytics connector at `POST /mcp`; unset = connector disabled | ⬜ optional |
 | `AUTH_MODE` | `bypass` for E2E; unset/`slack` in prod | ⬜ (E2E only) |
 

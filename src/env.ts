@@ -59,6 +59,9 @@ export interface Env {
   // is unconfigured (resolves to an empty roster, never an error).
   TEAM_ENGINEERING_USERGROUP?: string;
   TEAM_SUPPORT_USERGROUP?: string;
+  // Stakeholders response team: a Slack usergroup whose members are auto-invited
+  // to every new incident channel (in addition to the Home-tab opt-in list).
+  TEAM_STAKEHOLDERS_USERGROUP?: string;
 
   // --- MCP connector (see ROADMAP "MCP connector"). Read-only analytics over
   // MCP-over-HTTP at POST /mcp. Bearer token; unset = connector disabled. ---
