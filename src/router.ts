@@ -4,8 +4,8 @@ import { D1Db } from "./status/d1";
 import {
   commandRequest,
   declareIncident,
-  resolveIncident,
 } from "./incidents/commands";
+import { requestResolve } from "./incidents/jointResolve";
 
 /**
  * Routes verified Slack events to the right Incident Durable Object.
@@ -44,7 +44,7 @@ const DECLARE_RE = /^(?:\/incident\s+)?declare\b\s*/i;
 const RESOLVE_RE = /^(?:\/incident\s+)?resolve\b\s*/i;
 
 export interface RouteResult {
-  action: "declared" | "routed" | "resolved" | "ignored";
+  action: "declared" | "routed" | "resolved" | "resolve-requested" | "ignored";
   incidentId?: string;
   channelId?: string;
 }
@@ -109,12 +109,19 @@ export async function routeSlackEvent(
 
   const stub = env.INCIDENT.get(env.INCIDENT.idFromName(row.do_id));
 
-  // A resolve trigger in the incident's own channel closes it out: the DO
-  // posts a final update, marks status resolved, and stops its alarm loop.
+  // A resolve trigger in the incident's own channel REQUESTS resolution: it
+  // posts a Confirm button; a different person confirms to actually resolve
+  // (joint sign-off). See jointResolve.ts.
   if (isResolveTrigger(event)) {
-    await resolveIncident(env, row.incident_id, parseResolve(event.text ?? ""));
+    await requestResolve(
+      env,
+      row.incident_id,
+      event.channel,
+      event.user ?? "unknown",
+      parseResolve(event.text ?? ""),
+    );
     return {
-      action: "resolved",
+      action: "resolve-requested",
       incidentId: row.incident_id,
       channelId: event.channel,
     };

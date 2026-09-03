@@ -5,6 +5,7 @@ import {
   __setIncidentClientOverrides,
   __resetIncidentClientOverrides,
 } from "../src/incident";
+import { __setJointResolveSlackClient, confirmResolve } from "../src/incidents/jointResolve";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
 import { FakeSummarizer } from "../src/clients/fakeOpenai";
 
@@ -29,18 +30,18 @@ function post(path: string, cookie: string | null, body: unknown) {
 
 describe("incident management API", () => {
   beforeEach(() => {
-    // The DO reaches Slack/OpenAI via overrides; keep the sink REAL (local D1)
-    // so declared incidents land in the same tables /api/status reads.
     __setIncidentClientOverrides({
       slack: () => new FakeSlackClient(true),
       summarizer: () => new FakeSummarizer(true),
     });
+    __setJointResolveSlackClient(() => new FakeSlackClient(false));
   });
   afterEach(async () => {
     __resetIncidentClientOverrides();
-    await env.DB.prepare("DELETE FROM incident_updates").run();
-    await env.DB.prepare("DELETE FROM incidents").run();
-    await env.DB.prepare("DELETE FROM incident_channels").run();
+    __setJointResolveSlackClient(undefined);
+    for (const t of ["incident_resolution_requests", "postmortem_action_items", "postmortems", "incident_roles", "incident_updates", "incidents", "incident_channels"]) {
+      await env.DB.prepare(`DELETE FROM ${t}`).run();
+    }
   });
 
   it("rejects unauthenticated writes with 401", async () => {
@@ -110,23 +111,30 @@ describe("incident management API", () => {
     expect(res.status).toBe(400);
   });
 
-  it("resolves an incident", async () => {
+  it("requests resolve via API, then a different person confirms to resolve", async () => {
     const cookie = await authedCookie();
     const declared = (await (
       await post("/api/incidents", cookie, { name: "Outage" })
     ).json()) as { incidentId: string };
 
+    // Web resolve now REQUESTS (joint sign-off) — incident stays open.
     const res = await post(`/api/incidents/${declared.incidentId}/resolve`, cookie, {
       body: "All clear",
     });
     expect(res.status).toBe(200);
-
-    const inc = await env.DB.prepare(
-      "SELECT status, resolved_at FROM incidents WHERE id = ?",
-    )
+    let inc = await env.DB.prepare("SELECT status FROM incidents WHERE id = ?")
       .bind(declared.incidentId)
-      .first<{ status: string; resolved_at: string | null }>();
+      .first<{ status: string }>();
+    expect(inc?.status).not.toBe("resolved");
+
+    // A DIFFERENT person confirms (in-isolate; SELF waitUntil resolve isn't
+    // reliably visible to env.DB — see project.incident.workers_pool_limits).
+    const outcome = await confirmResolve(env as any, declared.incidentId, "web:U_OTHER");
+    expect(outcome.ok).toBe(true);
+    inc = await env.DB.prepare("SELECT status, resolved_at FROM incidents WHERE id = ?")
+      .bind(declared.incidentId)
+      .first<{ status: string; resolved_at: string | null }>() as any;
     expect(inc?.status).toBe("resolved");
-    expect(inc?.resolved_at).not.toBeNull();
+    expect((inc as any)?.resolved_at).not.toBeNull();
   });
 });

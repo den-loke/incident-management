@@ -47,10 +47,14 @@ export function postUpdate(
   });
 }
 
-export function resolveIncident(incidentId: string, body?: string): Promise<void> {
+export function requestResolve(incidentId: string, body?: string): Promise<void> {
   return postJson(`/api/incidents/${encodeURIComponent(incidentId)}/resolve`, {
     body,
   });
+}
+
+export function confirmResolve(incidentId: string): Promise<void> {
+  return postJson(`/api/incidents/${encodeURIComponent(incidentId)}/resolve/confirm`, {});
 }
 
 // --- Post-mortems ---

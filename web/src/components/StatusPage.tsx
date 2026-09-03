@@ -101,7 +101,18 @@ function IncidentCard({
         )}
         {active && (
           <div className="mt-4">
-            <IncidentActions incidentId={incident.id} onDone={onChange} />
+            <IncidentActions
+              incidentId={incident.id}
+              pending={
+                incident.pending_resolution
+                  ? {
+                      requested_by: incident.pending_resolution.requested_by,
+                      note: incident.pending_resolution.note,
+                    }
+                  : null
+              }
+              onDone={onChange}
+            />
           </div>
         )}
         {!active && (

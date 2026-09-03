@@ -9,6 +9,7 @@ import { verifySlackRequest } from "./verify";
 import { D1Db } from "../status/d1";
 import { CLAIM_ACTION_PREFIX, claimRole } from "../roles/service";
 import { isIncidentRole } from "../roles/types";
+import { CONFIRM_RESOLVE_ACTION, confirmResolve } from "../incidents/jointResolve";
 
 interface BlockActionsPayload {
   type?: string;
@@ -67,17 +68,25 @@ async function applyBlockActions(
   const userId = payload.user?.id;
   const action = payload.actions?.[0];
   if (!channelId || !userId || !action?.action_id) return;
-  if (!action.action_id.startsWith(CLAIM_ACTION_PREFIX)) return;
 
-  const role = action.value ?? action.action_id.slice(CLAIM_ACTION_PREFIX.length);
-  if (!isIncidentRole(role)) return;
-
-  // Resolve the incident that owns this channel.
+  // Resolve the incident that owns this channel (shared by all actions).
   const row = await new D1Db(env.DB).get<{ incident_id: string }>(
     "SELECT incident_id FROM incident_channels WHERE channel = ?",
     [channelId],
   );
   if (!row) return;
 
-  await claimRole(env, row.incident_id, channelId, role, userId);
+  // Role claim.
+  if (action.action_id.startsWith(CLAIM_ACTION_PREFIX)) {
+    const role = action.value ?? action.action_id.slice(CLAIM_ACTION_PREFIX.length);
+    if (!isIncidentRole(role)) return;
+    await claimRole(env, row.incident_id, channelId, role, userId);
+    return;
+  }
+
+  // Joint sign-off: confirm resolve.
+  if (action.action_id === CONFIRM_RESOLVE_ACTION) {
+    await confirmResolve(env, row.incident_id, userId);
+    return;
+  }
 }
