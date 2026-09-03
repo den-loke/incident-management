@@ -222,6 +222,21 @@ Detail on the real gaps:
   later addition but explicitly secondary. Auth: a scoped token (single-tenant stance).
   Likely a small MCP server (stdio or MCP-over-HTTP) alongside/served by the Worker.
 
+- **Conversational control — @-mention the bot in-channel (Den, 2026-09-03).** *Medium.*
+  "I should be able to chat to it." In an incident channel, `@Incident Management
+  <instruction>` in natural language should DO the thing — e.g. "@Incident Management
+  update please" → post/draft a status update now; "@… set status to identified",
+  "@… escalate to @alice", "@… what's the summary so far?", "@… resolve". An LLM
+  intent layer maps the mention text to the existing shared command functions
+  (`postIncidentUpdate` / `setSeverity` / `requestResolve` / escalate / summarize-now),
+  so it's a THIRD equivalent surface alongside slash commands and the button panel —
+  all one command path. **The plumbing already exists:** `app_mention` events are
+  already delivered to the router (today they only keep the DO/alarm alive); this item
+  adds the intent→action step. Distinct from the MCP connector (that's Claude-side,
+  analytics-first); this is in-Slack, live-incident, NL control. Keep it channel-scoped
+  (only acts inside a mapped incident channel) and confirm-on-ambiguity. A wrong action
+  should be as cheap to correct as any Slack message.
+
 - **Catalog / Pay calculator — NOT useful for us.** Den: "not sure the catalog is
   useful." incident.io's service/ownership **Catalog** (under "Nexus") is
   multi-tenant/large-org tooling; our fixed component list already covers it. The
