@@ -84,6 +84,127 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   - **Web On-call section** — who's on now/next, rotation, open alerts with escalation
     trail, and Ack / Create-incident / Override buttons.
 
+## Next (from incident.io sidebar review — 2026-09-03)
+
+Den walked the incident.io left-nav (screenshots) and mapped each section to what we
+actually want. The through-line stays our stance: **single-tenant, hard-coded,
+Slack-native** — several of these deliberately collapse incident.io's config screens
+into "point at a Slack group" or "one opinionated shape".
+
+**Full sidebar → our disposition** (incident.io nav item → what we do):
+
+| incident.io nav | Our disposition |
+|---|---|
+| **Teams** (Engineering, Support, …) | **Linked Slack user groups**, not a team-mgmt UI (below). |
+| On-call › **Alerts** | Have `POST /api/alerts`; **add a Zendesk webhook receiver** (+docs) as another source (below). |
+| On-call › **Alert routing** | **New** — route inbound alerts; **partner status-page monitor** is the killer case (below). |
+| On-call › **Escalations** | **List view** over the existing `oncall_escalations` trail (below). |
+| On-call › **Escalation paths** | Ladder is **hard-coded** — no builder; add a **read-only diagram** to explain it (below). |
+| On-call › **Schedules** | **Shipped** — the rotation + overrides. |
+| On-call › **Maintenance** | **New** — scheduled maintenance windows (below). |
+| On-call › **Pay calculator** | **Out of scope** — on-call compensation calc; not our concern. |
+| Response › **Incidents** | **Shipped** — the incident engine + web/Slack management. |
+| Response › **Post-incident flow** | **Hard-coded** fixed checklist — no builder (stance). Surface it (below). |
+| Response › **Follow-ups** | **New first-class view** — follow-up action-item status across incidents (below). |
+| Response › **Post-mortems** | **Shipped** — auto-draft + edit/publish + Jira export. |
+| **Status pages** | Internal page **shipped**; public/branded **out of scope**; Statuspage mirror deferred. |
+| **Nexus › Catalog** | **Parked / likely out of scope** — multi-tenant service-catalog tooling. |
+| **Insights** | **New** — dashboards ("definitely useful", below). |
+
+Detail on the real gaps:
+
+- **Response teams = linked Slack user groups (NOT a team-management UI).** *Small.*
+  Instead of managing team membership in our tool, link a **Slack user group** as the
+  "Engineering response" team and another as the "Customer support response" team;
+  membership is managed in Slack (`usergroups.users.list`). On-call/roles/escalation
+  read the group to know who's eligible. No membership CRUD in our app — one config
+  constant per team (the Slack usergroup id). *Replaces incident.io "Teams".*
+
+- **Routing paths: internal vs external incidents.** *Medium — a real capability.*
+  More than one incident shape. Example external/upstream case (a POS vendor is down):
+  we mostly **communicate**, we need a **Customer Support Lead** but **no Engineering
+  Lead / no on-call page** — it's not our fix. Internal incidents keep the full
+  Eng+Support + on-call shape. Pick the path at declare (a fixed small set of paths,
+  hard-coded — NOT a routing-rule builder): each path fixes which roles apply, whether
+  on-call is engaged, and the default comms surface. This is the single most
+  substantive new idea here.
+
+- **Alert routing.** *Medium.* incident.io separates the inbound **alert** from where
+  it goes. For us (hard-coded, not a rule builder): a small fixed mapping from an alert's
+  attributes (source, severity, a `route`/`service` field in the payload) to → engage
+  on-call escalation, and/or forward to a Slack channel, and/or auto-open an incident on
+  a given routing path. Keeps the alert→incident bridge but adds the "which path / who"
+  decision. Pairs with routing paths above.
+
+  **Killer use case — upstream/partner incidents (Den, 2026-09-03).** Monitor
+  **partner/upstream status pages** (many expose a Statuspage.io/Atom/JSON feed or
+  webhook). When a watched partner posts an incident, run a fixed workflow: **prompt to
+  update our status page** (a component depends on that partner) and/or **prompt to open
+  an incident on the external routing path** (Support-Lead-only, no eng page — ties to
+  routing paths). This is a distinct alert *source* (a poller/webhook over partner
+  status feeds) feeding the routing decision — arguably the highest-value alert-routing
+  application for us, since upstream POS/partner outages are exactly the "communicate,
+  don't fix" case.
+
+- **Scheduled maintenance.** *Medium.* A maintenance window is a first-class thing
+  (planned, has a start/end, shows on the internal status page as "under maintenance",
+  distinct from an incident). Declare/schedule ahead; auto-flip affected components to
+  `under_maintenance` for the window; no post-mortem. Ties into the existing component
+  status model.
+
+- **On-call roster management (engineering only).** *Small — mostly done.* We already
+  have the rotation + overrides (on-call epic). What's needed is the **management
+  surface** for the *engineering* roster specifically. **Support is always-on, so it
+  needs no roster** — only Engineering has a rotation. Reframe the On-call section
+  around the eng roster + overrides; drop any notion of a support rotation.
+
+- **Escalations list.** *Small.* A view listing escalations (who was paged, when,
+  ack state) — the `oncall_escalations` trail already exists per-alert; surface it as
+  a standalone list. **Not every incident has one** — escalations are their own thing,
+  not a per-incident requirement. (incident.io "Escalation paths" = the *config* of
+  the ladder, which for us is hard-coded — nothing to build there.)
+
+- **Escalation-path diagram (read-only, explanatory).** *Small.* Our ladder is
+  **not editable** (hard-coded L0→L1→L2, stance), but a **read-only diagram** of the
+  process is worth having — to explain to users what happens when an escalation fires.
+  Mirror incident.io's escalation-path view as documentation, not a builder: Start →
+  notify alerts channel (wait) → L1 primary on-call (ack timeout) → L2 next on-call +
+  manager → L3 `@channel` broadcast, annotated with the actual `ONCALL_*` timings.
+  Render it in the web On-call section (and/or a static diagram in docs). Explicitly
+  **view-only** — no Edit button.
+
+- **Alerts = inbound monitoring + Zendesk webhooks.** *Small–Medium.* We have
+  `POST /api/alerts` (HMAC) for monitoring. "Inbound email" does **not** mean we run
+  mail ingestion — it's a **Zendesk webhook**: configure Zendesk to fire a webhook on
+  a trigger (e.g. a ticket assigned to a given Zendesk group) at a **receiver URL** on
+  our side. So the work is small: a receiver endpoint (reuse/parallel `/api/alerts`
+  with a Zendesk-shaped adapter mapping the webhook payload → alert fields, verified
+  via a shared secret/signature) **plus setup docs** (which Zendesk trigger + webhook
+  to create, what URL, what secret). No IMAP/SMTP, no mailbox polling. Behind the same
+  alert-source abstraction; Zendesk is one adapter.
+
+- **Follow-ups (first-class) + historical incidents.** *Medium.* incident.io makes
+  **Follow-ups** its own nav item — a standing view of follow-up action items across
+  ALL incidents (open/done, owner, linked Jira), not buried per-postmortem. Build that
+  view, plus a browsable **history** of past incidents (filter by date/severity/path).
+  Extends the post-mortem action-item model + reporting into "what's outstanding".
+
+- **Post-incident flow (surface the fixed checklist).** *Small.* incident.io has a
+  configurable post-incident checklist; ours is **hard-coded** (stance). Just surface
+  the fixed checklist state on the incident (what's done: post-mortem drafted /
+  published / action items filed) — a view, not a builder.
+
+- **Insights = dashboards.** *Medium — "definitely useful".* Aggregate dashboards
+  (MTTR/MTTA trends, volume by severity/path/component, action-item backlog burndown)
+  building on the existing `/api/reports` metrics. The visible, high-value analytics
+  surface.
+
+- **Catalog / Pay calculator — NOT useful for us.** Den: "not sure the catalog is
+  useful." incident.io's service/ownership **Catalog** (under "Nexus") is
+  multi-tenant/large-org tooling; our fixed component list already covers it. The
+  **Pay calculator** (on-call compensation) is likewise out of scope. **Parked** unless
+  a concrete need appears.
+
 ## Next (capability gaps — real functionality, not config)
 
 Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
