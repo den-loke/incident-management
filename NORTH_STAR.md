@@ -44,7 +44,10 @@ durability beat features.
 - **Shipped to main**: Slack incident engine, OIDC + React/ShadCN web UI, web
   incident management, post-mortems, reporting, claimable roles, joint-resolve,
   Jira export, severity (SEV1/2/3), Slack↔web deep links, reaction accept/reject,
-  sequential INC-<n> ids, Slack App Home tab + stakeholder subscriptions.
+  sequential INC-<n> ids, Slack App Home tab + stakeholder subscriptions,
+  `/incident` slash commands, and an **incident-controls panel** (all actions —
+  update / status / escalate / severity / request-resolve — as Slack buttons +
+  modals; slash commands optional).
 - **On-call** (epic, see [`docs/SPEC_ONCALL.md`](docs/SPEC_ONCALL.md)): slices
   1 (rotation + shift-gen cron), 2 (HTTP alert ingestion), 3 (escalation ladder +
   sweep cron + Slack notifier + ack), 4 (Twilio SMS/voice paging behind the
@@ -58,22 +61,21 @@ durability beat features.
 
 ## Next goal (the frontier)
 
-The on-call epic is finished. Next, the item Den requested (2026-09-03):
-- **Incident action buttons in Slack (slash commands optional).** Expose every
-  incident action — post update, change status, escalate, request resolve, change
-  severity — as **buttons/modals on the incident panel** (extending today's
-  "Take Engineering/Support Lead" buttons), so `/incident …` slash commands become
-  an optional power-user path rather than the primary interface. Text-entry actions
-  open a `views.open` modal (the declare-modal `view_submission` pattern). Reuses the
-  `/slack/interactivity` `block_actions` handler + the shared command functions
-  (`postIncidentUpdate` / `setSeverity` / `requestResolve` / escalate), so Slack, web,
-  and buttons all drive the same path. One fixed button set — not a configurable
-  action builder. See `ROADMAP.md` → "Incident action buttons in Slack".
+The on-call epic and the **incident action buttons in Slack** (all actions as
+buttons/modals on the incident-controls panel, slash commands now optional —
+`src/incidents/controls.ts`) are both **done**. The build is now feature-complete
+against the roadmap's capability gaps; what remains is the deferred/coupled work,
+none of which is a clear single next slice — pick by value when picking up:
 
-Then the deferred items: real StatuspageSink + the ≥severity Statuspage prompt,
-Recall.ai call transcription, per-env custom domains, the emoji accept/reject
-producers not yet wired (severity-bump suggestion, auto-drafted status update),
-and a dedicated push/notification app (its own spec).
+- **Emoji accept/reject producers not yet wired** — the substrate exists
+  (`incident_suggestions` + `applyReaction`); wire the remaining producers
+  (severity-bump suggestion, auto-drafted status update ✅/❌). *Smallest, self-contained.*
+- **Real StatuspageSink** + the ≥severity "post to the status page?" prompt (the one
+  human 👍 gate) — the outbound-to-customers mirror. *Larger; unblocks the prompt.*
+- **Status-page fixture/preview route** (`?fixture=<name>` + `scripts/shoot-states.ts`)
+  for visual verification — also enables screenshotting the new panels/sections.
+- Deferred, own effort: Recall.ai call transcription, per-env custom domains, a
+  dedicated push/notification app.
 
 ## How to work (the loop)
 
