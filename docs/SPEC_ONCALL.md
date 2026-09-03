@@ -278,7 +278,11 @@ Cases:
    ladder **level** (not row count). Phone ack — SMS `Y`/`ACK` matches the sender's
    `phone`, voice press-1 correlates by Call SID (`provider_sid`) — both resolve to the
    same `oncall_ack` path as the Slack button.
-5. Alert→incident button + `/inc escalate` + bridge tests.
+5. **✅ DONE.** Alert→incident button + `/inc escalate` + bridge tests. `promoteAlertToIncident`
+   (button-wired since slice 3) now posts a back-link into the alert's paging channel
+   (`<#incident-channel>` + dashboard deep link) on promote, idempotently. Added
+   `/incident escalate <@user> [message]` — a direct, human-initiated out-of-band page
+   (DMs the target + notes it in-channel), distinct from the on-call ladder.
 6. Web On-call section (rotation + open alerts + override/ack/create buttons).
 7. `docs/ARCHITECTURE.md` + `ROADMAP.md` updates; move on-call to Shipped.
 

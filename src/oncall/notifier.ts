@@ -223,3 +223,28 @@ export async function pageAlert(
   const twilio = await pageViaTwilio(env, alert, level, target);
   return [slack, ...twilio];
 }
+
+/**
+ * Post an "alert promoted to incident" notice into the alert's paging channel,
+ * linking the new incident channel (and the dashboard, if APP_BASE_URL is set).
+ * Best-effort — a Slack failure never blocks the promotion. Uses the same seam
+ * as the pager so tests observe it via FakeSlackClient. See docs/SPEC_ONCALL.md §5.
+ */
+export async function notifyPromotion(
+  env: Env,
+  pagingChannel: string,
+  incidentChannel: string,
+  incidentId: string,
+): Promise<void> {
+  const slack = buildSlack(env);
+  const base = (env.APP_BASE_URL ?? "").replace(/\/$/, "");
+  const dash = base ? ` (<${base}/?incident=${incidentId}|dashboard>)` : "";
+  try {
+    await slack.postMessage(
+      pagingChannel,
+      `:fire: Alert promoted to incident <#${incidentChannel}>${dash}.`,
+    );
+  } catch {
+    /* non-fatal */
+  }
+}

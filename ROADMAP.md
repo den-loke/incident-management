@@ -93,6 +93,24 @@ Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
   prompt, not a separate concept — and it can't be built until the StatuspageSink
   exists (see Later) and severity is modelled.
 
+- **Incident action buttons in Slack (slash commands optional).** *Medium.*
+  **Requested 2026-09-03.** Every incident action should be doable from **buttons on
+  the incident message/panel** — not only via `/incident …` slash commands. Today the
+  bot posts an "Incident roles" Block Kit message with **Take Engineering Lead** /
+  **Take Customer Support Lead** buttons + a dashboard link; extend that panel (or add
+  a pinned "incident controls" message) with the full action set: **Post update**,
+  **Change status** (investigating/identified/monitoring), **Escalate** (page more
+  hands / on-call), **Request resolve**, **Change severity**. Text-entry actions
+  (update, escalate message) open a **modal** (`views.open`) — the same
+  `view_submission` pattern the declare modal already uses — so no typing in-channel
+  is required. Slash commands stay as an equivalent power-user path but become
+  **optional**, not the primary interface. Reuses the existing `/slack/interactivity`
+  `block_actions` handler + the shared `declareIncident`/`postIncidentUpdate`/
+  `setSeverity`/`requestResolve`/escalate service functions, so Slack, web, and
+  buttons all drive the same command path. No new hard-coded process — just more
+  affordances on the existing one. (Keep the panel monochrome/opinionated; one fixed
+  button set, not a configurable action builder.)
+
 - **Emoji accept/reject on app suggestions.** *Small–medium.* Let responders act on
   a suggestion the **app itself** posts (an AI-drafted status update, "post this to
   the status page?", "publish this post-mortem draft?") by reacting **✅ / ❌** on the
