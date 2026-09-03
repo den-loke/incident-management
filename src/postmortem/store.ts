@@ -92,6 +92,14 @@ export class PostmortemStore {
     );
   }
 
+  /** Record the exported Jira issue key on an action item. */
+  async setActionItemJiraKey(itemId: string, jiraKey: string): Promise<void> {
+    await this.db.run(
+      "UPDATE postmortem_action_items SET jira_key = ? WHERE id = ?",
+      [jiraKey, itemId],
+    );
+  }
+
   /** Mark a post-mortem published (finalized). */
   async publish(incidentId: string): Promise<void> {
     const now = nowIso();

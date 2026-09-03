@@ -64,6 +64,7 @@ export interface ActionItem {
   description: string;
   owner: string | null;
   done: boolean;
+  jira_key: string | null;
 }
 export interface Postmortem {
   id: string;

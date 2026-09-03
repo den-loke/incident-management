@@ -10,6 +10,7 @@ export interface ActionItem {
   owner: string | null;
   done: boolean;
   created_at: string;
+  jira_key: string | null;
 }
 
 export interface Postmortem {
