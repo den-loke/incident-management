@@ -54,6 +54,7 @@ interface RecentIncidentRow {
   severity: IncidentSeverity;
   created_at: string;
   resolved_at: string | null;
+  channel: string | null;
 }
 
 /** Load the most recent incidents (newest first) for the Home tab. */
@@ -62,8 +63,11 @@ async function recentIncidents(
   limit = 10,
 ): Promise<RecentIncidentRow[]> {
   return db.all<RecentIncidentRow>(
-    "SELECT id, name, status, severity, created_at, resolved_at " +
-      "FROM incidents ORDER BY created_at DESC LIMIT ?",
+    "SELECT i.id, i.name, i.status, i.severity, i.created_at, i.resolved_at, " +
+      "c.channel AS channel " +
+      "FROM incidents i " +
+      "LEFT JOIN incident_channels c ON c.incident_id = i.id " +
+      "ORDER BY i.created_at DESC LIMIT ?",
     [limit],
   );
 }
@@ -140,16 +144,30 @@ export function homeBlocks(
       inc.status === "resolved" && inc.resolved_at
         ? `resolved ${fmtDate(inc.resolved_at)}`
         : `opened ${fmtDate(inc.created_at)}`;
-    const namePart = base
-      ? `<${base}/?incident=${inc.id}|${inc.name}>`
-      : `*${inc.name}*`;
+    // Primary link is the Slack channel: `<#Cxxx>` renders as a clickable
+    // #channel mention that jumps straight into the incident channel. Fall back
+    // to the dashboard deep-link (then plain bold) when the channel is unknown.
+    let namePart: string;
+    if (inc.channel) {
+      namePart = `<#${inc.channel}> — ${inc.name}`;
+    } else if (base) {
+      namePart = `<${base}/?incident=${inc.id}|${inc.name}>`;
+    } else {
+      namePart = `*${inc.name}*`;
+    }
+    // When we have BOTH a channel link and a dashboard, offer the dashboard as
+    // a small secondary link so the web view is still reachable.
+    const dashboardTail =
+      inc.channel && base
+        ? ` · <${base}/?incident=${inc.id}|dashboard ↗>`
+        : "";
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
         text:
           `${STATUS_EMOJI[inc.status]} ${namePart}\n` +
-          `${SEVERITY_LABEL[inc.severity]} · ${inc.status} · ${when}`,
+          `${SEVERITY_LABEL[inc.severity]} · ${inc.status} · ${when}${dashboardTail}`,
       },
     });
   }
