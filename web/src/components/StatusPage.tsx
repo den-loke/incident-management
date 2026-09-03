@@ -79,6 +79,16 @@ function IncidentCard({
             Opened {fmt(incident.created_at)}
             {incident.resolved_at ? ` · Resolved ${fmt(incident.resolved_at)}` : ""}
           </p>
+          {incident.channel ? (
+            <a
+              href={`https://slack.com/app_redirect?channel=${incident.channel}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs underline underline-offset-2 hover:no-underline"
+            >
+              Open in Slack ↗
+            </a>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{SEVERITY_LABEL[incident.severity]}</Badge>

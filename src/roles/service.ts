@@ -72,7 +72,18 @@ export async function postRolesPanel(
 ): Promise<void> {
   const db = new D1Db(env.DB);
   const holders = await holdersMap(db, incidentId);
-  await buildSlack(env).postBlocks(channelId, rolesText(holders), rolesBlocks(holders));
+  const blocks = rolesBlocks(holders);
+  let text = rolesText(holders);
+  // Slack → web deep link back to the dashboard incident view, when configured.
+  if (env.APP_BASE_URL) {
+    const url = `${env.APP_BASE_URL.replace(/\/$/, "")}/?incident=${incidentId}`;
+    text += `\nView in dashboard: ${url}`;
+    blocks.push({
+      type: "context",
+      elements: [{ type: "mrkdwn", text: `<${url}|View this incident in the dashboard ↗>` }],
+    });
+  }
+  await buildSlack(env).postBlocks(channelId, text, blocks);
 }
 
 /**

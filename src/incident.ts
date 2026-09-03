@@ -285,10 +285,10 @@ export class Incident implements DurableObject {
 
 /** Slack channel names: lowercase, no dots. */
 function channelName(incidentId: string): string {
-  return `inc-${incidentId.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`.slice(
-    0,
-    80,
-  );
+  // incidentId is like "inc_<uuid>"; strip the leading inc_/inc- so we don't
+  // end up with "inc-inc-<uuid>".
+  const bare = incidentId.replace(/^inc[_-]/i, "");
+  return `inc-${bare.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`.slice(0, 80);
 }
 
 function json(body: unknown, status = 200): Response {
