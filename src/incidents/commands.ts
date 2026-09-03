@@ -49,6 +49,15 @@ export async function declareIncident(
     [channelId, incidentId, incidentId],
   );
 
+  // Post the claimable-roles panel to the new channel. Best-effort: a failure
+  // here must not fail the declare. Lazy import avoids a module cycle.
+  try {
+    const { postRolesPanel } = await import("../roles/service");
+    await postRolesPanel(env, incidentId, channelId);
+  } catch {
+    /* non-fatal: the panel can be re-posted later */
+  }
+
   return { incidentId, channelId };
 }
 

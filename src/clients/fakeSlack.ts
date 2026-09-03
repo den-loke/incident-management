@@ -9,6 +9,7 @@ export class FakeSlackClient implements SlackClient {
   channels = new Map<string, SlackMessage[]>();
   created: string[] = [];
   posted: { channel: string; text: string }[] = [];
+  postedBlocks: { channel: string; text: string; blocks: unknown[] }[] = [];
   private seq = 0;
 
   constructor(private readonly log = false) {}
@@ -32,6 +33,11 @@ export class FakeSlackClient implements SlackClient {
     this.channels.set(channel, msgs);
     this.posted.push({ channel, text });
     if (this.log) console.log(`[fake-slack] postMessage(${channel}): ${text}`);
+  }
+
+  async postBlocks(channel: string, text: string, blocks: unknown[]): Promise<void> {
+    this.postedBlocks.push({ channel, text, blocks });
+    await this.postMessage(channel, text);
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {

@@ -22,6 +22,14 @@ export const activeIncident: Incident = {
   status: "investigating",
   created_at: "2026-09-02T04:30:00Z",
   resolved_at: null,
+  roles: [
+    {
+      incident_id: "inc_active",
+      role: "engineering_lead",
+      slack_user_id: "U_ALICE",
+      assigned_at: "2026-09-02T04:32:00Z",
+    },
+  ],
   updates: [
     {
       id: "u2",
@@ -46,6 +54,7 @@ export const resolvedIncident: Incident = {
   status: "resolved",
   created_at: "2026-09-01T22:00:00Z",
   resolved_at: "2026-09-01T22:45:00Z",
+  roles: [],
   updates: [
     {
       id: "r2",

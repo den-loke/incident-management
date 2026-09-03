@@ -2,6 +2,7 @@
 import type { Env } from "./env";
 import { verifySlackRequest } from "./slack/verify";
 import { routeSlackEvent } from "./router";
+import { handleSlackInteractivity } from "./slack/interactivity";
 import {
   getSession,
   handleCallback,
@@ -109,6 +110,10 @@ export default {
 
     if (request.method === "POST" && url.pathname === "/slack/events") {
       return handleSlackEvents(request, env, ctx);
+    }
+
+    if (request.method === "POST" && url.pathname === "/slack/interactivity") {
+      return handleSlackInteractivity(request, env, ctx);
     }
 
     // --- Dashboard auth routes (OIDC). Not HMAC-gated. ---

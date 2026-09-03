@@ -11,7 +11,26 @@ import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentAct
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { ReportPanel } from "@/components/ReportPanel";
 import type { Component, Incident, StatusResponse } from "@/types";
+import { ROLE_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
 import { cn } from "@/lib/utils";
+
+const ROLE_ORDER: IncidentRole[] = ["engineering_lead", "customer_support_lead"];
+
+function RolesLine({ roles }: { roles: RoleAssignment[] }) {
+  const byRole = new Map(roles.map((r) => [r.role, r.slack_user_id]));
+  return (
+    <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      {ROLE_ORDER.map((role) => (
+        <span key={role}>
+          {ROLE_LABEL[role]}:{" "}
+          <span className="text-foreground">
+            {byRole.has(role) ? `@${byRole.get(role)}` : "unassigned"}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -62,6 +81,7 @@ function IncidentCard({
         <IncidentBadge status={incident.status} />
       </CardHeader>
       <CardContent>
+        <RolesLine roles={incident.roles} />
         {incident.updates.length === 0 ? (
           <p className="text-sm text-muted-foreground">No updates yet.</p>
         ) : (
