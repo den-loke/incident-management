@@ -45,6 +45,7 @@ export interface Incident {
   updates: IncidentUpdate[];
   roles: RoleAssignment[];
   pending_resolution: PendingResolution | null;
+  channel: string | null;
 }
 
 export type IncidentRole = "engineering_lead" | "customer_support_lead";

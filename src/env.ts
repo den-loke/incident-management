@@ -31,6 +31,10 @@ export interface Env {
 
   AUTH_MODE?: string; // "bypass" for E2E; unset/"slack" in prod
 
+  // Public base URL of the deployed dashboard (e.g. https://incident-management-test.<sub>.workers.dev).
+  // When set, Slack messages include a "View in dashboard" deep link back to the web UI.
+  APP_BASE_URL?: string;
+
   // --- On-call (see docs/SPEC_ONCALL.md §7). All optional with sensible defaults. ---
   ONCALL_TZ?: string; // IANA tz for rotation changeover; default Australia/Melbourne
   ONCALL_ROTATION_DAYS?: string; // shift length in days; default 7 (weekly)

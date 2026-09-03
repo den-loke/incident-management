@@ -20,6 +20,8 @@ export interface IncidentView extends Incident {
   updates: IncidentUpdate[];
   roles: RoleAssignment[];
   pending_resolution: PendingResolution | null;
+  /** Slack channel id for this incident, if a channel was created. */
+  channel: string | null;
 }
 
 export interface StatusPayload {
@@ -55,7 +57,17 @@ export async function loadStatus(
       "SELECT requested_by, requested_at, note FROM incident_resolution_requests WHERE incident_id = ? AND confirmed_at IS NULL",
       [inc.id],
     );
-    views.push({ ...inc, updates, roles, pending_resolution: pending ?? null });
+    const chan = await db.get<{ channel: string }>(
+      "SELECT channel FROM incident_channels WHERE incident_id = ?",
+      [inc.id],
+    );
+    views.push({
+      ...inc,
+      updates,
+      roles,
+      pending_resolution: pending ?? null,
+      channel: chan?.channel ?? null,
+    });
   }
 
   return {

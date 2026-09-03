@@ -20,8 +20,7 @@ export const activeIncident: Incident = {
   id: "inc_active",
   name: "Checkout returning 500s",
   status: "investigating",
-  severity: "sev1",
-  created_at: "2026-09-02T04:30:00Z",
+  severity: "sev1",  created_at: "2026-09-02T04:30:00Z",
   resolved_at: null,
   roles: [
     {
@@ -32,6 +31,7 @@ export const activeIncident: Incident = {
     },
   ],
   pending_resolution: null,
+  channel: "C0DEMO123",
   updates: [
     {
       id: "u2",
@@ -59,6 +59,7 @@ export const resolvedIncident: Incident = {
   resolved_at: "2026-09-01T22:45:00Z",
   roles: [],
   pending_resolution: null,
+  channel: "C0DEMO123",
   updates: [
     {
       id: "r2",
