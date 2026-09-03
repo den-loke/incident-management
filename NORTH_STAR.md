@@ -86,8 +86,9 @@ shape". Rough value order:
 - **Scheduled maintenance** — **✅ DONE** (`maintenance_windows`, migration 0013;
   cron reconcile flips components to `under_maintenance` for the window then restores;
   web "Scheduled maintenance" section + `POST /api/maintenance`; no post-mortem).
-- **Insights dashboards** — aggregate MTTR/MTTA/volume/action-item analytics on the
-  existing `/api/reports` metrics ("definitely useful").
+- **Insights dashboards** — **✅ DONE** (`GET /api/insights` + `InsightsSection`:
+  volume by severity/path, monthly opened/resolved trend, MTTR per bucket + overall,
+  action-item backlog; monochrome bar charts, period selector).
 - **Historical incidents + follow-up action status** — browsable past-incident history
   + standing "outstanding action items" view.
 - **Alerts: inbound email via Zendesk** — a mailbox/trigger forwards to `/api/alerts`,

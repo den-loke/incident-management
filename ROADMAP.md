@@ -109,7 +109,7 @@ into "point at a Slack group" or "one opinionated shape".
 | Response › **Post-mortems** | **Shipped** — auto-draft + edit/publish + Jira export. |
 | **Status pages** | Internal page **shipped**; public/branded **out of scope**; Statuspage mirror deferred. |
 | **Nexus › Catalog** | **Parked / likely out of scope** — multi-tenant service-catalog tooling. |
-| **Insights** | **New** — dashboards ("definitely useful", below). |
+| **Insights** | **✅ Shipped** — dashboards on `/api/insights` (severity/path/monthly trend + MTTR). |
 
 Detail on the real gaps:
 
@@ -207,10 +207,13 @@ Detail on the real gaps:
   the fixed checklist state on the incident (what's done: post-mortem drafted /
   published / action items filed) — a view, not a builder.
 
-- **Insights = dashboards.** *Medium — "definitely useful".* Aggregate dashboards
-  (MTTR/MTTA trends, volume by severity/path/component, action-item backlog burndown)
-  building on the existing `/api/reports` metrics. The visible, high-value analytics
-  surface.
+- **Insights = dashboards.** *Medium — "definitely useful".* **✅ SHIPPED.**
+  `GET /api/insights?period=` (`src/reporting/insights.ts` — `buildInsights`) aggregates
+  over the recorded data: volume **by severity**, **by routing path**, a **monthly
+  opened/resolved trend**, MTTR per bucket + overall, and the open action-item backlog.
+  Web **Insights section** (`InsightsSection`) renders it with monochrome bar charts +
+  a period selector (30d/90d/all) — no chart lib, matches the borderless stance. Builds
+  on the reporting metrics.
 
 - **MCP connector for Claude (analytics-first).** *Medium — Den, 2026-09-03.* Expose
   the tool over **MCP** so Claude (and other MCP clients) can query it in natural
