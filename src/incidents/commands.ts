@@ -65,6 +65,18 @@ export async function declareIncident(
     /* non-fatal: the panel can be re-posted later */
   }
 
+  // Invite every standing stakeholder to the new channel. Best-effort — a
+  // Slack failure must not fail the declare. Opting in from the Home tab once
+  // covers all future incidents. Lazy import avoids a module cycle.
+  try {
+    const { inviteStakeholdersToChannel } = await import(
+      "../stakeholders/service"
+    );
+    await inviteStakeholdersToChannel(env, channelId);
+  } catch {
+    /* non-fatal: stakeholders can still be invited manually */
+  }
+
   return { incidentId, channelId };
 }
 

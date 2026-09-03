@@ -12,6 +12,7 @@ import {
 } from "../src/incidents/jointResolve";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
 import { FakeSummarizer } from "../src/clients/fakeOpenai";
+import { __setStakeholderSlackClient } from "../src/stakeholders/service";
 
 let slack: FakeSlackClient;
 
@@ -22,10 +23,12 @@ beforeEach(() => {
     summarizer: () => new FakeSummarizer(),
   });
   __setJointResolveSlackClient(() => slack);
+  __setStakeholderSlackClient(() => slack);
 });
 afterEach(() => {
   __resetIncidentClientOverrides();
   __setJointResolveSlackClient(undefined);
+  __setStakeholderSlackClient(undefined);
 });
 
 function callbackEvent(event: Record<string, unknown>) {
@@ -35,6 +38,29 @@ function callbackEvent(event: Record<string, unknown>) {
 }
 
 describe("routeSlackEvent", () => {
+  it("publishes the Home tab on app_home_opened", async () => {
+    const res = await routeSlackEvent(
+      callbackEvent({ type: "app_home_opened", user: "U_ALICE", tab: "home" }),
+      env as any,
+    );
+    expect(res.action).toBe("home-published");
+    expect(slack.publishedViews).toHaveLength(1);
+    expect(slack.publishedViews[0].userId).toBe("U_ALICE");
+  });
+
+  it("does not publish for a non-home tab open", async () => {
+    const res = await routeSlackEvent(
+      callbackEvent({
+        type: "app_home_opened",
+        user: "U_ALICE",
+        tab: "messages",
+      }),
+      env as any,
+    );
+    expect(res.action).toBe("home-published");
+    expect(slack.publishedViews).toHaveLength(0);
+  });
+
   it("declares a new incident on a declare trigger and records the channel map", async () => {
     const res = await routeSlackEvent(
       callbackEvent({

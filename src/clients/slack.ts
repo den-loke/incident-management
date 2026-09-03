@@ -19,6 +19,10 @@ export interface SlackClient {
   history(channel: string, limit?: number): Promise<SlackMessage[]>;
   /** Add a reaction emoji to a message (used to seed ✅/❌ affordances). */
   addReaction(channel: string, ts: string, emoji: string): Promise<void>;
+  /** Publish a Block Kit view to a user's App Home tab. */
+  viewsPublish(userId: string, blocks: unknown[]): Promise<void>;
+  /** Invite users to a channel (used to add stakeholders to incident channels). */
+  inviteToChannel(channel: string, userIds: string[]): Promise<void>;
 }
 
 const SLACK_API = "https://slack.com/api";
@@ -83,6 +87,32 @@ export class WebApiSlackClient implements SlackClient {
     } catch (e) {
       // already_reacted is benign (e.g. re-seeding an affordance).
       if (!String(e).includes("already_reacted")) throw e;
+    }
+  }
+
+  async viewsPublish(userId: string, blocks: unknown[]): Promise<void> {
+    await this.call("views.publish", {
+      user_id: userId,
+      view: { type: "home", blocks },
+    });
+  }
+
+  async inviteToChannel(channel: string, userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    try {
+      await this.call("conversations.invite", {
+        channel,
+        users: userIds.join(","),
+      });
+    } catch (e) {
+      // Benign: someone already in the channel, or the bot re-inviting itself.
+      const msg = String(e);
+      if (
+        !msg.includes("already_in_channel") &&
+        !msg.includes("cant_invite_self")
+      ) {
+        throw e;
+      }
     }
   }
 }
