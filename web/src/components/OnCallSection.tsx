@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/form";
 import * as api from "@/lib/api";
-import type { OncallSection, OncallOpenAlert } from "@/types";
+import type { OncallSection, OncallOpenAlert, OncallEscalationPath, OncallEscalationEvent } from "@/types";
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -159,6 +159,74 @@ function OverrideDialog({
   );
 }
 
+function EscalationPathDiagram({ path }: { path: OncallEscalationPath }) {
+  return (
+    <div className="mb-3">
+      <h3 className="mb-1 text-xs text-muted-foreground">
+        Escalation path <span className="opacity-70">(fixed · read-only)</span>
+      </h3>
+      <Card>
+        <CardContent className="p-0">
+          {path.steps.map((s, i) => (
+            <div key={s.level}>
+              {i > 0 && <Separator />}
+              <div className="px-4 py-2.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{s.title}</span>
+                  {s.wait_minutes && s.wait_minutes > 0 ? (
+                    <Badge variant="outline">wait {s.wait_minutes}m</Badge>
+                  ) : s.wait_minutes === null ? (
+                    <Badge variant="outline">terminal</Badge>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{s.detail}</p>
+                {i < path.steps.length - 1 && <div className="mt-1 text-xs text-muted-foreground">↓</div>}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Unacked levels escalate every {path.ack_timeout_minutes} minutes. Any responder can ack to stop the ladder.
+      </p>
+    </div>
+  );
+}
+
+function EscalationsLog({ events }: { events: OncallEscalationEvent[] }) {
+  return (
+    <div className="mb-3">
+      <h3 className="mb-1 text-xs text-muted-foreground">Escalations</h3>
+      <Card>
+        <CardContent className="p-0">
+          {events.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-muted-foreground">No escalations yet.</p>
+          ) : (
+            events.map((e, i) => (
+              <div key={e.id}>
+                {i > 0 && <Separator />}
+                <div className="flex items-start justify-between gap-3 px-4 py-2 text-sm">
+                  <div className="min-w-0">
+                    <span className="truncate">{e.alert_title}</span>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      L{e.level} · {e.channel} · {fmt(e.fired_at)}
+                      {e.acked_at ? ` · acked by ${e.acked_by ?? "someone"}` : " · unacked"}
+                      {e.incident_id ? " · incident linked" : ""}
+                    </div>
+                  </div>
+                  <Badge variant={e.alert_status === "firing" ? "default" : "outline"}>
+                    {e.alert_status === "firing" ? "Firing" : e.alert_status === "ack" ? "Acked" : "Resolved"}
+                  </Badge>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function OnCallSection() {
   const [section, setSection] = useState<OncallSection | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -238,6 +306,11 @@ export function OnCallSection() {
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-3">
+        <EscalationsLog events={section.escalation_events} />
+        <EscalationPathDiagram path={section.path} />
+      </div>
     </section>
   );
 }
