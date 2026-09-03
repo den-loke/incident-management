@@ -12,7 +12,7 @@ import { D1Db } from "../status/d1";
 import type { AlertRow } from "./alerts";
 import { getAlert } from "./alerts";
 import { whoIsOnCall, nextResponder, type Responder } from "./rotation";
-import { pageViaSlack } from "./notifier";
+import { pageAlert } from "./notifier";
 
 const DEFAULT_ACK_TIMEOUT_MIN = 10;
 const MAX_LEVEL = 2;
@@ -58,21 +58,28 @@ async function fireLevel(env: Env, alert: AlertRow, level: number): Promise<void
   const channel = await alertsChannel(env, alert);
   if (!channel) return; // nowhere to page; empty-rotation-safe, no error.
   const target = await targetFor(env, level);
-  const page = await pageViaSlack(env, channel, alert, level, target);
+  const results = await pageAlert(env, channel, alert, level, target);
   const db = new D1Db(env.DB);
-  await db.run(
-    `INSERT INTO oncall_escalations (id, alert_id, level, target, channel, provider_sid, fired_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      uid(),
-      alert.id,
-      level,
-      level >= MAX_LEVEL ? channel : target?.id ?? channel,
-      page.channel,
-      page.provider_sid ?? null,
-      nowIso(),
-    ],
-  );
+  // One row per channel that fired, all stamped with the SAME level and instant
+  // so the ladder position is the row's `level` (not row count) and the sweep
+  // keys on MAX(level). provider_sid lets a phone ack correlate back to a row.
+  const firedAt = nowIso();
+  const ladderTarget = level >= MAX_LEVEL ? channel : target?.id ?? channel;
+  for (const page of results) {
+    await db.run(
+      `INSERT INTO oncall_escalations (id, alert_id, level, target, channel, provider_sid, fired_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        uid(),
+        alert.id,
+        level,
+        ladderTarget,
+        page.channel,
+        page.provider_sid ?? null,
+        firedAt,
+      ],
+    );
+  }
 }
 
 /**
@@ -87,33 +94,40 @@ interface LatestEsc {
   alert_id: string;
   level: number;
   fired_at: string;
-  acked_at: string | null;
+  acked_any: number;
 }
 
 /**
- * Cron sweep: for each firing alert, if its newest escalation row is unacked and
- * older than the ack timeout, fire the next level (up to L2, which is terminal).
- * Drives the ladder without live timers.
+ * Cron sweep: for each firing alert, look at its CURRENT ladder level (the max
+ * level any escalation row reached). If no row at that level is acked and the
+ * level's most recent page is older than the ack timeout, fire the next level
+ * (up to L2, which is terminal). Keying on level (not row count) keeps this
+ * correct now that one level can have several rows — Slack + SMS + voice.
  */
 export async function sweepEscalations(
   env: Env,
   now: Date = new Date(),
 ): Promise<{ escalated: number }> {
   const db = new D1Db(env.DB);
-  // Newest escalation per still-firing alert.
+  // Per still-firing alert: its max level, the newest fired_at AT that level,
+  // and whether ANY row at that level has been acked.
   const rows = await db.all<LatestEsc>(
-    `SELECT e.alert_id, e.level, e.fired_at, e.acked_at
+    `SELECT e.alert_id,
+            e.level,
+            MAX(e.fired_at) AS fired_at,
+            MAX(CASE WHEN e.acked_at IS NOT NULL THEN 1 ELSE 0 END) AS acked_any
        FROM oncall_escalations e
        JOIN oncall_alerts a ON a.id = e.alert_id
       WHERE a.status = 'firing'
-        AND e.fired_at = (
-          SELECT MAX(e2.fired_at) FROM oncall_escalations e2 WHERE e2.alert_id = e.alert_id
-        )`,
+        AND e.level = (
+          SELECT MAX(e2.level) FROM oncall_escalations e2 WHERE e2.alert_id = e.alert_id
+        )
+      GROUP BY e.alert_id, e.level`,
   );
   const cutoff = now.getTime() - ackTimeoutMs(env);
   let escalated = 0;
   for (const r of rows) {
-    if (r.acked_at) continue; // acked → ladder stopped
+    if (r.acked_any) continue; // acked → ladder stopped
     if (r.level >= MAX_LEVEL) continue; // L2 is terminal
     if (new Date(r.fired_at).getTime() > cutoff) continue; // not timed out yet
     const alert = await getAlert(env, r.alert_id);
@@ -156,8 +170,9 @@ export type AckOutcome =
   | { result: "ignored"; reason: "no_open_escalation" | "already_acked" };
 
 /**
- * Acknowledge an alert: stamp the newest escalation row, set the alert to 'ack',
- * stop the ladder. Any allow-listed user may ack. Idempotent.
+ * Acknowledge an alert: stamp every unacked escalation row at the CURRENT ladder
+ * level, set the alert to 'ack', stop the ladder. Any allow-listed user may ack.
+ * Idempotent — a second ack (once already acked at the top level) no-ops.
  */
 export async function ackAlert(
   env: Env,
@@ -165,17 +180,67 @@ export async function ackAlert(
   userId: string,
 ): Promise<AckOutcome> {
   const db = new D1Db(env.DB);
-  const latest = await db.get<{ id: string; acked_at: string | null }>(
-    "SELECT id, acked_at FROM oncall_escalations WHERE alert_id = ? ORDER BY fired_at DESC LIMIT 1",
+  const top = await db.get<{ level: number }>(
+    "SELECT MAX(level) AS level FROM oncall_escalations WHERE alert_id = ?",
     [alertId],
   );
-  if (!latest) return { result: "ignored", reason: "no_open_escalation" };
-  if (latest.acked_at) return { result: "ignored", reason: "already_acked" };
+  if (top?.level === null || top?.level === undefined) {
+    return { result: "ignored", reason: "no_open_escalation" };
+  }
+  const already = await db.get<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM oncall_escalations WHERE alert_id = ? AND level = ? AND acked_at IS NOT NULL",
+    [alertId, top.level],
+  );
+  if ((already?.n ?? 0) > 0) return { result: "ignored", reason: "already_acked" };
 
   await db.run(
-    "UPDATE oncall_escalations SET acked_at = ?, acked_by = ? WHERE id = ?",
-    [nowIso(), userId, latest.id],
+    "UPDATE oncall_escalations SET acked_at = ?, acked_by = ? WHERE alert_id = ? AND level = ? AND acked_at IS NULL",
+    [nowIso(), userId, alertId, top.level],
   );
   await db.run("UPDATE oncall_alerts SET status = 'ack' WHERE id = ? AND status = 'firing'", [alertId]);
   return { result: "acked", alertId };
+}
+
+/**
+ * Phone ack via Twilio voice (press 1): correlate a Call SID back to its
+ * escalation row, then ack the owning alert. Same terminal effect as the Slack
+ * button — only the entry point differs (§3a).
+ */
+export async function ackAlertByProviderSid(
+  env: Env,
+  providerSid: string,
+): Promise<AckOutcome> {
+  const row = await new D1Db(env.DB).get<{ alert_id: string }>(
+    "SELECT alert_id FROM oncall_escalations WHERE provider_sid = ? LIMIT 1",
+    [providerSid],
+  );
+  if (!row) return { result: "ignored", reason: "no_open_escalation" };
+  return ackAlert(env, row.alert_id, `twilio:${providerSid}`);
+}
+
+/**
+ * Phone ack via Twilio SMS (reply Y/ACK): match the sender's E.164 number to a
+ * responder, find their most recent firing alert paged to them, and ack it.
+ */
+export async function ackAlertByPhone(
+  env: Env,
+  fromPhone: string,
+): Promise<AckOutcome> {
+  const db = new D1Db(env.DB);
+  const responder = await db.get<{ id: string }>(
+    "SELECT id FROM oncall_responders WHERE phone = ? LIMIT 1",
+    [fromPhone],
+  );
+  if (!responder) return { result: "ignored", reason: "no_open_escalation" };
+  // Newest firing alert whose ladder targeted this responder.
+  const esc = await db.get<{ alert_id: string }>(
+    `SELECT e.alert_id
+       FROM oncall_escalations e
+       JOIN oncall_alerts a ON a.id = e.alert_id
+      WHERE e.target = ? AND a.status = 'firing'
+      ORDER BY e.fired_at DESC LIMIT 1`,
+    [responder.id],
+  );
+  if (!esc) return { result: "ignored", reason: "no_open_escalation" };
+  return ackAlert(env, esc.alert_id, responder.id);
 }
