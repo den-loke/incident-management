@@ -104,7 +104,7 @@ into "point at a Slack group" or "one opinionated shape".
 | On-call › **Maintenance** | **✅ Shipped** — scheduled maintenance windows (below). |
 | On-call › **Pay calculator** | **Out of scope** — on-call compensation calc; not our concern. |
 | Response › **Incidents** | **Shipped** — the incident engine + web/Slack management. |
-| Response › **Post-incident flow** | **Hard-coded** fixed checklist — no builder (stance). Surface it (below). |
+| Response › **Post-incident flow** | **✅ Shipped** — read-only view of the hard-coded checklist (below). |
 | Response › **Follow-ups** | **✅ Shipped** — cross-incident action-item view + incident history (below). |
 | Response › **Post-mortems** | **Shipped** — auto-draft + edit/publish + Jira export. |
 | **Status pages** | Internal page **shipped**; public/branded **out of scope**; Statuspage mirror deferred. |
@@ -207,10 +207,12 @@ Detail on the real gaps:
   a filterable incident-history list. `src/reporting/followups.ts`, read-only over
   existing tables — no migration.
 
-- **Post-incident flow (surface the fixed checklist).** *Small.* incident.io has a
-  configurable post-incident checklist; ours is **hard-coded** (stance). Just surface
-  the fixed checklist state on the incident (what's done: post-mortem drafted /
-  published / action items filed) — a view, not a builder.
+- **Post-incident flow (surface the fixed checklist).** *Small.* **✅ SHIPPED.**
+  `buildPostIncidentFlow` (`src/postmortem/postIncidentFlow.ts`) derives the FIXED
+  checklist per incident from existing data — no builder, no new table, no writes:
+  resolved → post-mortem drafted → action items captured → action items filed (n/a when
+  none) → post-mortem published. Read-only `GET /api/incidents/:id/post-incident-flow`
+  (session-gated) + a **Post-incident flow** checklist in the web incident card.
 
 - **Insights = dashboards.** *Medium — "definitely useful".* **✅ SHIPPED.**
   `GET /api/insights?period=` (`src/reporting/insights.ts` — `buildInsights`) aggregates

@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
 import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
 import { PostmortemSection } from "@/components/PostmortemSection";
+import { PostIncidentFlowSection } from "@/components/PostIncidentFlowSection";
 import { ReportPanel } from "@/components/ReportPanel";
 import { InsightsSection } from "@/components/InsightsSection";
 import { FollowUpsSection } from "@/components/FollowUpsSection";
@@ -143,6 +144,7 @@ function IncidentCard({
             <div className="my-4">
               <Separator />
             </div>
+            <PostIncidentFlowSection incidentId={incident.id} />
             <PostmortemSection incidentId={incident.id} />
           </>
         )}
