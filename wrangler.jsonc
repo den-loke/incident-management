@@ -10,7 +10,7 @@
   // Scheduled work (see src/oncall/cron.ts). Daily shift-generation tops up the
   // rotation ~4 weeks ahead. The ~1-min escalation sweep is added in on-call slice 3.
   // NOTE: named envs do NOT inherit top-level triggers — repeated in each below.
-  "triggers": { "crons": ["0 0 * * *"] },
+  "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
 
   // Per-incident state + timers. One Durable Object instance == one incident.
   "durable_objects": {
@@ -55,7 +55,7 @@
   "env": {
     "test": {
       "name": "incident-management-test",
-      "triggers": { "crons": ["0 0 * * *"] },
+      "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
       "vars": {
         "APP_BASE_URL": "https://incident-management-test.lokeglobal.workers.dev",
         "SLACK_CLIENT_ID": "11966909474212.11974798087254",
@@ -91,7 +91,7 @@
     },
     "production": {
       "name": "incident-management",
-      "triggers": { "crons": ["0 0 * * *"] },
+      "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
       "vars": {
         "APP_BASE_URL": "https://incident-management.lokeglobal.workers.dev",
         "ONCALL_TZ": "Australia/Melbourne",

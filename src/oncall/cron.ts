@@ -8,9 +8,11 @@
 
 import type { Env } from "../env";
 import { generateShifts } from "./rotation";
+import { sweepEscalations } from "./escalation";
 
 // Cron expressions declared in wrangler.jsonc [triggers].
 const SHIFT_GEN_CRON = "0 0 * * *"; // daily at 00:00 UTC — top up the rotation
+const ESCALATION_SWEEP_CRON = "* * * * *"; // every minute — advance unacked escalations
 
 export async function runOncallScheduled(
   event: ScheduledController,
@@ -20,10 +22,13 @@ export async function runOncallScheduled(
     case SHIFT_GEN_CRON:
       await generateShifts(env);
       break;
-    // The escalation sweep cron is wired in slice 3.
+    case ESCALATION_SWEEP_CRON:
+      await sweepEscalations(env);
+      break;
     default:
-      // Unknown cron: top up shifts as a safe default (idempotent).
+      // Unknown cron: run both idempotent maintenance passes as a safe default.
       await generateShifts(env);
+      await sweepEscalations(env);
       break;
   }
 }

@@ -8,6 +8,9 @@ export default defineWorkersConfig(async () => {
   return {
     test: {
       setupFiles: ["./test/applyMigrations.ts"],
+      // Never discover tests inside nested git worktrees (.worktrees/<branch>/):
+      // vitest would double-collect them against the shared D1 and they collide.
+      exclude: ["**/node_modules/**", "**/.worktrees/**"],
       poolOptions: {
         workers: {
           singleWorker: true,

@@ -29,6 +29,7 @@ import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
+import { escalateNew } from "./oncall/escalation";
 import { applyReaction } from "./incidents/suggestions";
 
 export { Incident } from "./incident";
@@ -208,6 +209,10 @@ export default {
         dedup_key: typeof parsed?.dedup_key === "string" ? parsed.dedup_key : undefined,
         status,
       });
+      // A genuinely new firing alert starts the escalation ladder at level 0.
+      if (outcome.result === "created") {
+        ctx.waitUntil(escalateNew(env, outcome.alert));
+      }
       return json(outcome, outcome.result === "created" ? 201 : 200);
     }
 
