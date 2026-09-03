@@ -164,3 +164,36 @@ export function getReport(period: string): Promise<Report> {
 export function reportCsvUrl(period: string): string {
   return `/api/reports?period=${encodeURIComponent(period)}&format=csv`;
 }
+
+// --- On-call ---
+
+export function fetchOncall(): Promise<import("@/types").OncallSection> {
+  return fetch("/api/oncall", {
+    credentials: "same-origin",
+    headers: { accept: "application/json" },
+  }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<import("@/types").OncallSection>;
+  });
+}
+
+export function ackAlert(alertId: string): Promise<void> {
+  return postJson(`/api/oncall/alerts/${encodeURIComponent(alertId)}/ack`, {});
+}
+
+export function promoteAlert(alertId: string): Promise<void> {
+  return postJson(`/api/oncall/alerts/${encodeURIComponent(alertId)}/promote`, {});
+}
+
+export function setOncallOverride(
+  responder: string,
+  startsAt: string,
+  endsAt: string,
+): Promise<void> {
+  return postJson("/api/oncall/overrides", {
+    responder,
+    starts_at: startsAt,
+    ends_at: endsAt,
+  });
+}
