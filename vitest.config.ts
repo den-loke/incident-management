@@ -25,6 +25,9 @@ export default defineWorkersConfig(async () => {
               // that a local .dev.vars might otherwise leak into the test env,
               // which would silently turn the auth-gating assertions green.
               AUTH_MODE: "",
+              // On-call alert HMAC secret so endpoint tests can forge a valid
+              // X-Signature header (POST /api/alerts). See docs/SPEC_ONCALL.md §4.
+              ONCALL_ALERT_SECRET: "e2e-alert-secret",
             },
           },
         },

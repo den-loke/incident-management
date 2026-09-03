@@ -27,6 +27,8 @@ import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
 import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { runOncallScheduled } from "./oncall/cron";
+import { verifyAlertSignature } from "./oncall/alertVerify";
+import { ingestAlert } from "./oncall/alerts";
 
 export { Incident } from "./incident";
 
@@ -156,6 +158,31 @@ export default {
       if (!session) return json({ error: "unauthorized" }, 401);
       const data = await loadStatus(env, session);
       return json(data);
+    }
+
+    // --- On-call alert ingestion (public, HMAC-verified). See docs/SPEC_ONCALL.md §4.
+    // Not session-gated — monitoring sources sign the raw body with ONCALL_ALERT_SECRET.
+    if (request.method === "POST" && url.pathname === "/api/alerts") {
+      const raw = await request.text();
+      const ok = await verifyAlertSignature(request.headers, raw, env.ONCALL_ALERT_SECRET);
+      if (!ok) return json({ error: "bad_signature" }, 401);
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+      } catch {
+        return json({ error: "invalid_json" }, 400);
+      }
+      const title = typeof parsed?.title === "string" ? parsed.title.trim() : "";
+      const status = parsed?.status === "resolved" ? "resolved" : "firing";
+      if (status === "firing" && !title) return json({ error: "title_required" }, 400);
+      const outcome = await ingestAlert(env, {
+        title,
+        body: typeof parsed?.body === "string" ? parsed.body : undefined,
+        severity: typeof parsed?.severity === "string" ? parsed.severity : undefined,
+        dedup_key: typeof parsed?.dedup_key === "string" ? parsed.dedup_key : undefined,
+        status,
+      });
+      return json(outcome, outcome.result === "created" ? 201 : 200);
     }
 
     // --- Incident management (write), gated behind a Slack session. ---
