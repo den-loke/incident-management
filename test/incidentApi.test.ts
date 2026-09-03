@@ -67,7 +67,7 @@ describe("incident management API", () => {
       incidentId: string;
       channelId: string;
     };
-    expect(incidentId).toMatch(/^inc_/);
+    expect(incidentId).toMatch(/^INC-\d+$/);
     expect(channelId).toBeTruthy();
 
     const row = await env.DB.prepare("SELECT * FROM incidents WHERE id = ?")

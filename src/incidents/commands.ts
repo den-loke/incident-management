@@ -5,6 +5,7 @@
 
 import type { Env } from "../env";
 import { D1Db } from "../status/d1";
+import { nextIncidentNumber, formatIncidentId } from "../counter";
 import type { IncidentStatus } from "../status/types";
 import type { IncidentSeverity } from "../status/types";
 
@@ -38,7 +39,11 @@ export async function declareIncident(
   body?: string,
   severity?: IncidentSeverity,
 ): Promise<DeclareResult> {
-  const incidentId = `inc_${crypto.randomUUID()}`;
+  // Sequential, human-meaningful id: "INC-1", "INC-2", … The counter DO is the
+  // single serialization point so concurrent declares get distinct numbers.
+  const incidentId = formatIncidentId(
+    await nextIncidentNumber(env.INCIDENT_COUNTER),
+  );
   const stub = stubForIncident(env, incidentId);
 
   const res = await stub.fetch(

@@ -285,8 +285,8 @@ export class Incident implements DurableObject {
 
 /** Slack channel names: lowercase, no dots. */
 function channelName(incidentId: string): string {
-  // incidentId is like "inc_<uuid>"; strip the leading inc_/inc- so we don't
-  // end up with "inc-inc-<uuid>".
+  // incidentId is like "INC-42"; lowercase and strip a leading inc[_-] so we
+  // get "inc-42" (not "inc-inc-42"), then sanitise to Slack's charset.
   const bare = incidentId.replace(/^inc[_-]/i, "");
   return `inc-${bare.replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`.slice(0, 80);
 }

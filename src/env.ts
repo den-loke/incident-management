@@ -4,6 +4,8 @@
 export interface Env {
   // Durable Object namespace: one instance per incident.
   INCIDENT: DurableObjectNamespace;
+  // Durable Object namespace: single-instance monotonic incident-number counter.
+  INCIDENT_COUNTER: DurableObjectNamespace;
   // D1: incident data + internal status page (source of truth).
   DB: D1Database;
   // Static SPA assets (built from web/ into ./public). Optional so unit tests

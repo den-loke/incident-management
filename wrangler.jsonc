@@ -15,11 +15,13 @@
   // Per-incident state + timers. One Durable Object instance == one incident.
   "durable_objects": {
     "bindings": [
-      { "name": "INCIDENT", "class_name": "Incident" }
+      { "name": "INCIDENT", "class_name": "Incident" },
+      { "name": "INCIDENT_COUNTER", "class_name": "IncidentCounter" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["Incident"] }
+    { "tag": "v1", "new_sqlite_classes": ["Incident"] },
+    { "tag": "v2", "new_sqlite_classes": ["IncidentCounter"] }
   ],
 
   // Incident data / audit log / internal status page (source of truth).
@@ -63,9 +65,15 @@
         "ONCALL_ACK_TIMEOUT_MIN": "10"
       },
       "durable_objects": {
-        "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
+        "bindings": [
+          { "name": "INCIDENT", "class_name": "Incident" },
+          { "name": "INCIDENT_COUNTER", "class_name": "IncidentCounter" }
+        ]
       },
-      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Incident"] }],
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["Incident"] },
+        { "tag": "v2", "new_sqlite_classes": ["IncidentCounter"] }
+      ],
       "assets": {
         "directory": "./public",
         "binding": "ASSETS",
@@ -91,9 +99,15 @@
         "ONCALL_ACK_TIMEOUT_MIN": "10"
       },
       "durable_objects": {
-        "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
+        "bindings": [
+          { "name": "INCIDENT", "class_name": "Incident" },
+          { "name": "INCIDENT_COUNTER", "class_name": "IncidentCounter" }
+        ]
       },
-      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Incident"] }],
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["Incident"] },
+        { "tag": "v2", "new_sqlite_classes": ["IncidentCounter"] }
+      ],
       "assets": {
         "directory": "./public",
         "binding": "ASSETS",
