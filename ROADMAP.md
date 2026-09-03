@@ -67,22 +67,26 @@ demo as "features," but for us they are one-line constants, not roadmap items.
 - ✅ **Slack interactivity endpoint** — `/slack/interactivity` (signed
   `block_actions`), the surface roles + joint-resolve buttons use and on-call will
   reuse.
+- ✅ **Jira integration (action-item export)** — on post-mortem publish, action items
+  export to Jira issues behind a swappable `IssueTracker` (no-op when unconfigured).
+- ✅ **Severity model** — fixed SEV1/2/3 scale, set at declare, changeable during the
+  incident (timeline event), owned by the Customer Support Lead.
+- ✅ **On-call** *(the one large epic — see [`docs/SPEC_ONCALL.md`](docs/SPEC_ONCALL.md)
+  and ARCHITECTURE §13)* — minimal, opinionated, single-team on-call:
+  - **Rotation** — one weekly shape (Mon 10:00 `ONCALL_TZ` changeover, round-robin),
+    shifts materialised ahead by a daily cron; click **overrides**.
+  - **Alert ingestion** — `POST /api/alerts` (HMAC), dedup-by-key + auto-resolve on recovery.
+  - **Escalation ladder** — L0 primary → L1 next responder + `@manager` → L2 `@channel`,
+    cron-driven timeout (`sweepEscalations`), any user acks to stop it.
+  - **Notifiers** — Slack always on; **Twilio SMS/voice** optional behind a `Notifier`
+    abstraction (config-gated), with SMS `Y`/voice press-1 phone ack.
+  - **Alert → incident bridge** — Create-incident button (Slack + web) + `/incident escalate`.
+  - **Web On-call section** — who's on now/next, rotation, open alerts with escalation
+    trail, and Ack / Create-incident / Override buttons.
 
 ## Next (capability gaps — real functionality, not config)
 
 Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
-
-- **Jira integration (action-item export).** *Medium.* **Next up.** On postmortem
-  save/publish, export action items to **Jira** issues (create + link back; keep
-  status in sync where feasible). Behind an abstraction so the tracker is swappable,
-  but Jira is the day-one target. Store the external issue key on
-  `postmortem_action_items`.
-
-- **Severity model.** *Small, but a real decision — not yet built.* Incidents
-  currently have only a lifecycle status (`investigating → identified → monitoring →
-  resolved`), no severity. Adding a fixed severity scale unlocks: "Customer Support
-  Lead owns severity" as a concrete field, and the severity-gated Statuspage prompt
-  below. Do this before/with the Statuspage-prompt work.
 
 - **Status-page prompt (severity-gated, coupled to StatuspageSink).** *Small, but
   DEFERRED until StatuspageSink is real.* Internal AI summaries stay **automatic** —
@@ -145,20 +149,14 @@ Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
   Start with the two that exist today; the rest attach to the same table + dispatcher
   as their producers land.
 
-## On-call *(the one large epic — needs its own spec)*
+## On-call *(shipped — see Shipped above)*
 
-The only pillar hard-coding does **not** shrink much: even a single team needs a real
-rotation, escalation, and alert ingestion. Keep it **minimal and opinionated**, not
-configurable:
-- **Schedule** — one rotation shape (responders, rotation length, change-over);
-  overrides by click. Holiday feed optional.
-- **Escalation path** — one opinionated shape (e.g. Slack during hours → on-call
-  after hours → manager as second line; round-robin over available on-callers).
-- **Alert source** — HTTP source only to start (Datadog/Grafana/Prometheus post to
-  it). Optional AI attribute extraction from the payload later.
-- **Alert routes** — filter → escalate / create incident / forward to Slack; alert→
-  incident button in Slack; simple time+team grouping.
-- **Escalate from Slack** — `/inc escalate <team|user>` with a paging message.
+The one large epic is **complete**: rotation, HTTP alert ingestion, the three-level
+escalation ladder (cron-driven), Slack + optional Twilio notifiers with phone ack, the
+alert→incident bridge, and the web On-call section all landed. Design and the resolved
+decisions live in [`docs/SPEC_ONCALL.md`](docs/SPEC_ONCALL.md); the runtime overview is
+ARCHITECTURE §13. Nothing here is a config surface — one rotation shape, one escalation
+shape, one alert source, all hard-coded per the product stance above.
 
 ## Later (deferred)
 - **StatuspageSink** real implementation (currently a stub) + Statuspage

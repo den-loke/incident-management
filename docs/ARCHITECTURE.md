@@ -221,6 +221,15 @@ test, not the backbone.
 | `STATUSPAGE_API_KEY` | Enables the Statuspage mirror sink | ⬜ optional |
 | `STATUSPAGE_PAGE_ID` | Target Statuspage page | ⬜ (with key) |
 | `RECALLAI_API_KEY` + region | Call transcription (later) | ⬜ optional |
+| `JIRA_BASE_URL` / `JIRA_EMAIL` / `JIRA_API_TOKEN` / `JIRA_PROJECT_KEY` | Post-mortem action-item export to Jira | ⬜ optional |
+| `ONCALL_TZ` | Rotation changeover timezone (default `Australia/Melbourne`) | ⬜ (default) |
+| `ONCALL_ROTATION_DAYS` | Shift length in days (default 7 = weekly) | ⬜ (default) |
+| `ONCALL_ACK_TIMEOUT_MIN` | Minutes before escalating a level (default 10) | ⬜ (default) |
+| `ONCALL_MANAGER` | Slack user id — level-1 backstop mention | ⬜ optional |
+| `ONCALL_FALLBACK_CHANNEL` | Slack channel id to page when nobody is on call | ⬜ optional |
+| `ONCALL_ALERT_SECRET` | HMAC secret for `POST /api/alerts` | ⬜ (for alerts) |
+| `ONCALL_TWILIO_ACCOUNT_SID` / `ONCALL_TWILIO_AUTH_TOKEN` / `ONCALL_TWILIO_FROM` | Twilio SMS/voice paging (unset = disabled; token also validates inbound Twilio webhooks) | ⬜ optional |
+| `ONCALL_CHANNEL_POLICY` | Override the L0/L1/L2 notifier channel policy | ⬜ optional |
 | `AUTH_MODE` | `bypass` for E2E; unset/`slack` in prod | ⬜ (E2E only) |
 
 ---
@@ -249,3 +258,42 @@ test, not the backbone.
 
 The living roadmap (shipped / next / post-mortems / reporting / deferred) lives in
 [`ROADMAP.md`](../ROADMAP.md) at the repo root.
+
+---
+
+## 13. On-call (rotation, escalation, alerting)
+
+The one large pillar hard-coding does not shrink much — even a single team needs a
+real rotation, escalation, and a way for monitoring to reach a human. Kept minimal
+and opinionated (one rotation shape, one escalation shape, one alert source); full
+design and decisions in [`SPEC_ONCALL.md`](SPEC_ONCALL.md). **Shipped**, in slices:
+
+- **Rotation** — weekly hand-off, changeover Monday 10:00 `ONCALL_TZ` (round-robin over
+  `oncall_responders`). A daily cron materialises shifts ~4 weeks ahead
+  (`generateShifts`, idempotent); overrides are `is_override=1` rows that win over the
+  base. "On call at T" is a single indexed read (`whoIsOnCall`).
+- **Alert ingestion** — `POST /api/alerts` (HMAC via `ONCALL_ALERT_SECRET`), generic
+  `{title, body?, severity?, dedup_key?, status?}`; dedup-by-key folds flaps, and
+  `status:"resolved"` auto-closes matching open alerts.
+- **Escalation ladder** — three levels (L0 primary → L1 next responder + `@ONCALL_MANAGER`
+  → L2 `@channel` broadcast, terminal), each firing only if the prior went unacked for
+  `ONCALL_ACK_TIMEOUT_MIN`. Timeout firing is **cron-driven** (`sweepEscalations`, ~1-min
+  cron), never a live timer — it survives restarts. Any allow-listed user acks; ack stops
+  the ladder.
+- **Notifiers** — Slack always on; **Twilio** SMS/voice optional behind a `Notifier`
+  abstraction, config-gated on `ONCALL_TWILIO_*` (like `StatusSink`). Per-level channel
+  policy (L0 Slack+SMS, L1 +voice, L2 Slack-only; `ONCALL_CHANNEL_POLICY`-overridable).
+  Phone ack — SMS `Y`/`ACK`, voice press-1 — arrives at `POST /api/twilio/{sms,voice}`
+  (validated with `X-Twilio-Signature`) and resolves to the same `oncall_ack` path as the
+  Slack button.
+- **Alert → incident bridge** — a **Create incident** button (Slack + web) promotes an
+  alert via the existing `declareIncident` path and links it back, posting the incident
+  channel link into the alert's paging channel. `/incident escalate <@user>` pages a
+  specific person out-of-band. Never automatic (avoids an alert storm minting incidents).
+- **Web On-call section** — `GET /api/oncall` + a status-page section mirroring who's on
+  now/next, the rotation, and open alerts with their escalation trail, plus Ack /
+  Create-incident / Override buttons that hit the same functions as Slack.
+
+Cron triggers (`wrangler.jsonc`): a daily shift-gen (`0 0 * * *`) and a ~1-min escalation
+sweep (`* * * * *`), declared at the top level **and** in each named env (named envs don't
+inherit). All `ONCALL_*` config is optional with sensible defaults (see §10).
