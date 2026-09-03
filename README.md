@@ -4,6 +4,10 @@ Slack-first incident management tool. Cloudflare-native (Workers, Durable
 Objects, D1, Workflows). Mirrors status to statuspage.io; incident operations
 run through Slack. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+**Start here:** [`NORTH_STAR.md`](NORTH_STAR.md) — the goal, hard invariants,
+current state, and what to build next (the source of intent for goal-driven
+development). The ordered feature list is [`ROADMAP.md`](ROADMAP.md).
+
 ## Develop
 
 ```bash
