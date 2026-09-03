@@ -28,6 +28,7 @@ import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
 import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
 import { buildInsights } from "./reporting/insights";
+import { listFollowUps, listIncidentHistory } from "./reporting/followups";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
@@ -426,6 +427,28 @@ export default {
       const period = url.searchParams.get("period") ?? "90d";
       const { from, to } = periodWindow(period);
       return json(await buildInsights(new D1Db(env.DB), from, to));
+    }
+
+    // --- Follow-ups: cross-incident action items (session-gated). GET /api/followups?open=0|1 ---
+    if (request.method === "GET" && url.pathname === "/api/followups") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const onlyOpen = url.searchParams.get("open") !== "0";
+      return json({ followups: await listFollowUps(new D1Db(env.DB), onlyOpen) });
+    }
+
+    // --- Incident history (session-gated). GET /api/history?severity=&routing_path= ---
+    if (request.method === "GET" && url.pathname === "/api/history") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const sevParam = url.searchParams.get("severity");
+      const pathParam = url.searchParams.get("routing_path");
+      return json({
+        incidents: await listIncidentHistory(new D1Db(env.DB), {
+          severity: isIncidentSeverity(sevParam) ? sevParam : undefined,
+          routing_path: isRoutingPath(pathParam) ? pathParam : undefined,
+        }),
+      });
     }
     const pmMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/postmortem$/);
     if (pmMatch) {

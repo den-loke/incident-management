@@ -105,7 +105,7 @@ into "point at a Slack group" or "one opinionated shape".
 | On-call › **Pay calculator** | **Out of scope** — on-call compensation calc; not our concern. |
 | Response › **Incidents** | **Shipped** — the incident engine + web/Slack management. |
 | Response › **Post-incident flow** | **Hard-coded** fixed checklist — no builder (stance). Surface it (below). |
-| Response › **Follow-ups** | **New first-class view** — follow-up action-item status across incidents (below). |
+| Response › **Follow-ups** | **✅ Shipped** — cross-incident action-item view + incident history (below). |
 | Response › **Post-mortems** | **Shipped** — auto-draft + edit/publish + Jira export. |
 | **Status pages** | Internal page **shipped**; public/branded **out of scope**; Statuspage mirror deferred. |
 | **Nexus › Catalog** | **Parked / likely out of scope** — multi-tenant service-catalog tooling. |
@@ -196,11 +196,13 @@ Detail on the real gaps:
   to create, what URL, what secret). No IMAP/SMTP, no mailbox polling. Behind the same
   alert-source abstraction; Zendesk is one adapter.
 
-- **Follow-ups (first-class) + historical incidents.** *Medium.* incident.io makes
-  **Follow-ups** its own nav item — a standing view of follow-up action items across
-  ALL incidents (open/done, owner, linked Jira), not buried per-postmortem. Build that
-  view, plus a browsable **history** of past incidents (filter by date/severity/path).
-  Extends the post-mortem action-item model + reporting into "what's outstanding".
+- **Follow-ups (first-class) + historical incidents.** *Medium.* **✅ SHIPPED.**
+  `GET /api/followups?open=` — cross-incident action items joined to their incident +
+  post-mortem (open/done, owner, Jira key); `GET /api/history?severity=&routing_path=`
+  — browsable past incidents (newest first, with has-postmortem + open-action counts +
+  filters). Web **Follow-ups & history** section: an outstanding/all follow-ups list and
+  a filterable incident-history list. `src/reporting/followups.ts`, read-only over
+  existing tables — no migration.
 
 - **Post-incident flow (surface the fixed checklist).** *Small.* incident.io has a
   configurable post-incident checklist; ours is **hard-coded** (stance). Just surface

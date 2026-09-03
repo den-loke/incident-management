@@ -11,6 +11,7 @@ import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentAct
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { ReportPanel } from "@/components/ReportPanel";
 import { InsightsSection } from "@/components/InsightsSection";
+import { FollowUpsSection } from "@/components/FollowUpsSection";
 import { OnCallSection } from "@/components/OnCallSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
 import type { Component, Incident, StatusResponse } from "@/types";
@@ -190,6 +191,8 @@ export function StatusPage({
       <ReportPanel />
 
       <InsightsSection />
+
+      <FollowUpsSection />
 
       <section className="mb-8">
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
