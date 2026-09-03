@@ -32,6 +32,7 @@ import { ingestAlert } from "./oncall/alerts";
 import { applyReaction } from "./incidents/suggestions";
 
 export { Incident } from "./incident";
+export { IncidentCounter } from "./counter";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
