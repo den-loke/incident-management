@@ -93,6 +93,21 @@ Ordered roughly by value/effort. Each non-trivial item gets its own mini-spec.
   prompt, not a separate concept — and it can't be built until the StatuspageSink
   exists (see Later) and severity is modelled.
 
+- **Emoji accept/reject on app suggestions.** *Small–medium.* Let responders act on
+  a suggestion the **app itself** posts (an AI-drafted status update, "post this to
+  the status page?", "publish this post-mortem draft?") by reacting **✅ / ❌** on the
+  bot's message — no button, no typing. Generic substrate: when the bot posts a
+  suggestion it records `(channel, ts, kind, payload, status=pending)` in a new
+  `incident_suggestions` table and seeds the ✅/❌ affordances; a `reaction_added`
+  handler resolves `(channel, ts)` to a pending suggestion and dispatches
+  accept/reject (first reaction wins, reactor recorded). Reactions on anything NOT a
+  tracked suggestion are ignored — this is deliberately not "pin any message".
+  Needs the `reaction_added` event (already subscribed) + the `reactions:read` bot
+  scope. First real producers to wire: **joint-resolve confirm** (✅ confirms) and
+  **post-mortem publish** (✅ publish / ❌ discard) — both exist today — with the
+  deferred Statuspage prompt plugging into the same layer once StatuspageSink lands.
+  (Requested 2026-09-03; parked to keep the first real end-to-end declare unblocked.)
+
 ## On-call *(the one large epic — needs its own spec)*
 
 The only pillar hard-coding does **not** shrink much: even a single team needs a real
