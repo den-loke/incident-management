@@ -97,8 +97,10 @@ shape". Rough value order:
   `src/oncall/zendesk.ts`: shared-secret `X-Signature` verify + Zendesk-payload→AlertInput
   adapter over the existing `ingestAlert`/`routeNewAlert` pipeline; setup docs in
   `docs/DEPLOY.md`. Webhook, not mail ingestion — one adapter, alert model unchanged).
-- **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
-  support is always-on so has no rotation.
+- **On-call roster mgmt (engineering only)** — **✅ DONE** (web On-call section reframed
+  as the Engineering roster: "(Engineering roster)" header, "Rotation & overrides"
+  subheading, "Support is always-on — no rotation" note; label/clarity change, no logic —
+  no support-rotation concept existed to remove).
 - **MCP connector (analytics-first)** — **✅ DONE** (`src/mcp/server.ts`: MCP-over-HTTP
   at `POST /mcp`, bearer-token via `MCP_TOKEN`; read-only tools `get_report`,
   `get_insights`, `list_follow_ups`, `list_incidents` wrapping the reporting layer;
