@@ -38,6 +38,21 @@ export function isIncidentSeverity(v: unknown): v is IncidentSeverity {
   return typeof v === "string" && (INCIDENT_SEVERITIES as readonly string[]).includes(v);
 }
 
+// Fixed set of incident ROUTING PATHS (single-tenant — not a routing-rule builder).
+// The path is the incident's SHAPE, chosen at declare:
+//   internal = our own systems, full response (both roles, on-call engaged).
+//   external = an upstream/partner issue we mostly COMMUNICATE (Support Lead only,
+//              no Engineering Lead, no on-call page).
+export const ROUTING_PATHS = ["internal", "external"] as const;
+export type RoutingPath = (typeof ROUTING_PATHS)[number];
+export const ROUTING_PATH_LABEL: Record<RoutingPath, string> = {
+  internal: "Internal (our systems)",
+  external: "External (upstream / partner)",
+};
+export function isRoutingPath(v: unknown): v is RoutingPath {
+  return typeof v === "string" && (ROUTING_PATHS as readonly string[]).includes(v);
+}
+
 export interface Component {
   id: string;
   name: string;
@@ -50,6 +65,7 @@ export interface Incident {
   name: string;
   status: IncidentStatus;
   severity: IncidentSeverity;
+  routing_path: RoutingPath;
   created_at: string;
   resolved_at: string | null;
 }
@@ -67,5 +83,6 @@ export interface OpenIncidentInput {
   name: string;
   status?: IncidentStatus; // defaults to "investigating"
   severity?: IncidentSeverity; // defaults to "sev2"
+  routingPath?: RoutingPath; // defaults to "internal"
   body?: string; // optional first update
 }

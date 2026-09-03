@@ -20,6 +20,12 @@ export const SEVERITY_LABEL: Record<IncidentSeverity, string> = {
   sev3: "SEV3",
 };
 
+export type RoutingPath = "internal" | "external";
+export const ROUTING_PATH_LABEL: Record<RoutingPath, string> = {
+  internal: "Internal",
+  external: "External",
+};
+
 export interface Component {
   id: string;
   name: string;
@@ -40,6 +46,7 @@ export interface Incident {
   name: string;
   status: IncidentStatus;
   severity: IncidentSeverity;
+  routing_path: RoutingPath;
   created_at: string;
   resolved_at: string | null;
   updates: IncidentUpdate[];

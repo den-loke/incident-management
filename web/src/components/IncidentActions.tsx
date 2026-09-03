@@ -17,6 +17,7 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [severity, setSeverity] = useState("sev2");
+  const [routingPath, setRoutingPath] = useState("internal");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -24,11 +25,12 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setErr(null);
     try {
-      await api.declareIncident(name.trim(), body.trim() || undefined, severity);
+      await api.declareIncident(name.trim(), body.trim() || undefined, severity, routingPath);
       setOpen(false);
       setName("");
       setBody("");
       setSeverity("sev2");
+      setRoutingPath("internal");
       onDone();
     } catch (e) {
       setErr(String((e as Error).message));
@@ -55,6 +57,10 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
             <option value="sev1">SEV1 · Major</option>
             <option value="sev2">SEV2 · Partial</option>
             <option value="sev3">SEV3 · Minor</option>
+          </Select>
+          <Select value={routingPath} onChange={(e) => setRoutingPath(e.target.value)}>
+            <option value="internal">Internal (our systems)</option>
+            <option value="external">External (upstream / partner)</option>
           </Select>
           <Textarea
             placeholder="First update (optional)"

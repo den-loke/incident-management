@@ -21,8 +21,12 @@ import { StakeholderStore } from "./store";
 import {
   SEVERITY_LABEL,
   INCIDENT_SEVERITIES,
+  ROUTING_PATHS,
+  ROUTING_PATH_LABEL,
+  isRoutingPath,
   type IncidentSeverity,
   type IncidentStatus,
+  type RoutingPath,
 } from "../status/types";
 import { declareIncident } from "../incidents/commands";
 
@@ -50,6 +54,8 @@ const DECLARE_NAME_BLOCK = "declare_name_block";
 const DECLARE_NAME_ACTION = "declare_name_input";
 const DECLARE_SEV_BLOCK = "declare_sev_block";
 const DECLARE_SEV_ACTION = "declare_sev_select";
+const DECLARE_PATH_BLOCK = "declare_path_block";
+const DECLARE_PATH_ACTION = "declare_path_select";
 
 const STATUS_EMOJI: Record<IncidentStatus, string> = {
   investigating: "🔴",
@@ -276,6 +282,23 @@ export function declareModalView(): unknown {
           })),
         },
       },
+      {
+        type: "input",
+        block_id: DECLARE_PATH_BLOCK,
+        label: { type: "plain_text", text: "Routing path" },
+        element: {
+          type: "static_select",
+          action_id: DECLARE_PATH_ACTION,
+          initial_option: {
+            text: { type: "plain_text", text: ROUTING_PATH_LABEL.internal },
+            value: "internal",
+          },
+          options: ROUTING_PATHS.map((p) => ({
+            text: { type: "plain_text", text: ROUTING_PATH_LABEL[p] },
+            value: p,
+          })),
+        },
+      },
     ],
   };
 }
@@ -320,9 +343,12 @@ export async function submitDeclareModal(
   const severity = (INCIDENT_SEVERITIES as readonly string[]).includes(sev ?? "")
     ? (sev as IncidentSeverity)
     : undefined;
+  const pathVal =
+    values[DECLARE_PATH_BLOCK]?.[DECLARE_PATH_ACTION]?.selected_option?.value;
+  const routingPath: RoutingPath | undefined = isRoutingPath(pathVal) ? pathVal : undefined;
 
   if (name) {
-    await declareIncident(env, name, undefined, severity);
+    await declareIncident(env, name, undefined, severity, routingPath);
   }
 
   // Refresh the submitter's Home tab so the new incident appears.

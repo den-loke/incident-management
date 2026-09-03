@@ -20,7 +20,9 @@ export const activeIncident: Incident = {
   id: "inc_active",
   name: "Checkout returning 500s",
   status: "investigating",
-  severity: "sev1",  created_at: "2026-09-02T04:30:00Z",
+  severity: "sev1",
+  routing_path: "internal",
+  created_at: "2026-09-02T04:30:00Z",
   resolved_at: null,
   roles: [
     {
@@ -55,6 +57,7 @@ export const resolvedIncident: Incident = {
   name: "Elevated webhook latency",
   status: "resolved",
   severity: "sev3",
+  routing_path: "external",
   created_at: "2026-09-01T22:00:00Z",
   resolved_at: "2026-09-01T22:45:00Z",
   roles: [],

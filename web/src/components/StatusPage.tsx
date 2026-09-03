@@ -14,6 +14,7 @@ import { OnCallSection } from "@/components/OnCallSection";
 import type { Component, Incident, StatusResponse } from "@/types";
 import { ROLE_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
 import { SEVERITY_LABEL } from "@/types";
+import { ROUTING_PATH_LABEL } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -93,6 +94,7 @@ function IncidentCard({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{SEVERITY_LABEL[incident.severity]}</Badge>
+          <Badge variant="outline">{ROUTING_PATH_LABEL[incident.routing_path]}</Badge>
           <IncidentBadge status={incident.status} />
         </div>
       </CardHeader>

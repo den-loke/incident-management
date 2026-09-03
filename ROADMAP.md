@@ -120,14 +120,15 @@ Detail on the real gaps:
   read the group to know who's eligible. No membership CRUD in our app — one config
   constant per team (the Slack usergroup id). *Replaces incident.io "Teams".*
 
-- **Routing paths: internal vs external incidents.** *Medium — a real capability.*
-  More than one incident shape. Example external/upstream case (a POS vendor is down):
-  we mostly **communicate**, we need a **Customer Support Lead** but **no Engineering
-  Lead / no on-call page** — it's not our fix. Internal incidents keep the full
-  Eng+Support + on-call shape. Pick the path at declare (a fixed small set of paths,
-  hard-coded — NOT a routing-rule builder): each path fixes which roles apply, whether
-  on-call is engaged, and the default comms surface. This is the single most
-  substantive new idea here.
+- **Routing paths: internal vs external incidents.** *Medium — a real capability.* **✅ SHIPPED.**
+  Two fixed incident shapes chosen at declare (`routing_path` on `incidents`, migration
+  0011; default `internal`). **external** (upstream/partner, e.g. a POS vendor is down):
+  we mostly communicate — the roles panel offers **Customer Support Lead only**, no
+  Engineering Lead. **internal**: full shape (both roles). Selectable in the Slack
+  declare modal, the web declare form, and `POST /api/incidents` (`routing_path`); shown
+  as a badge on the incident card. Roles panel gating via `rolesForPath()`. Hard-coded
+  set — not a routing-rule builder. (On-call engagement per path + alert-routing hooks
+  build on this next.)
 
 - **Alert routing.** *Medium.* incident.io separates the inbound **alert** from where
   it goes. For us (hard-coded, not a rule builder): a small fixed mapping from an alert's
@@ -198,6 +199,18 @@ Detail on the real gaps:
   (MTTR/MTTA trends, volume by severity/path/component, action-item backlog burndown)
   building on the existing `/api/reports` metrics. The visible, high-value analytics
   surface.
+
+- **MCP connector for Claude (analytics-first).** *Medium — Den, 2026-09-03.* Expose
+  the tool over **MCP** so Claude (and other MCP clients) can query it in natural
+  language. Primary use is **post-hoc reporting/analysis, NOT live incident response**:
+  "how many incidents in the last quarter?", "what are the common patterns / recurring
+  root causes?", "which components fail most?", "how's our action-item backlog?".
+  Read-only analytics tools first — thin MCP wrappers over the existing reporting +
+  post-mortem + incident-history data (`/api/reports`, incident/postmortem stores) —
+  since that's where an LLM adds the most value (cross-incident pattern mining over
+  post-mortem text). Live-response tools (declare/update from Claude) are a possible
+  later addition but explicitly secondary. Auth: a scoped token (single-tenant stance).
+  Likely a small MCP server (stdio or MCP-over-HTTP) alongside/served by the Worker.
 
 - **Catalog / Pay calculator — NOT useful for us.** Den: "not sure the catalog is
   useful." incident.io's service/ownership **Catalog** (under "Nexus") is

@@ -68,10 +68,11 @@ Through-line unchanged: single-tenant, hard-coded, Slack-native — several of t
 collapse incident.io config screens into "point at a Slack group" or "one fixed
 shape". Rough value order:
 
-- **Routing paths: internal vs external incidents** — the most substantive new idea.
-  A fixed small set of incident shapes chosen at declare (e.g. external/upstream-POS =
-  Customer-Support-Lead only, no Eng Lead, no on-call page; internal = full shape).
-  Each path fixes which roles apply, whether on-call engages, and the comms surface.
+- **Routing paths: internal vs external incidents** — **✅ DONE** (`routing_path` on
+  incidents, migration 0011; external = Support-Lead-only roles, internal = full shape;
+  selectable in Slack declare modal + web + `POST /api/incidents`; badge on the card).
+  Next on this: gate **on-call engagement** by path (external → no page) and hook
+  **alert routing** into it.
 - **Response teams = linked Slack user groups** — link an "Engineering response" and a
   "Customer support response" Slack usergroup; membership managed in Slack, not our
   app. One config constant per team. Replaces incident.io "Teams".

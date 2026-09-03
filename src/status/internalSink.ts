@@ -29,12 +29,13 @@ export class InternalStatusSink implements StatusSink {
       name: input.name,
       status: input.status ?? "investigating",
       severity: input.severity ?? "sev2",
+      routing_path: input.routingPath ?? "internal",
       created_at: nowIso(),
       resolved_at: null,
     };
     await this.db.run(
-      "INSERT INTO incidents (id, name, status, severity, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?)",
-      [incident.id, incident.name, incident.status, incident.severity, incident.created_at, null],
+      "INSERT INTO incidents (id, name, status, severity, routing_path, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [incident.id, incident.name, incident.status, incident.severity, incident.routing_path, incident.created_at, null],
     );
     if (input.body) {
       await this.appendIncidentUpdate(incident.id, input.body, incident.status);

@@ -8,7 +8,7 @@ import { FakeSlackClient } from "./clients/fakeSlack";
 import { FakeSummarizer } from "./clients/fakeOpenai";
 import type { StatusSink } from "./status/sink";
 import type { IncidentStatus } from "./status/types";
-import type { IncidentSeverity } from "./status/types";
+import type { IncidentSeverity, RoutingPath } from "./status/types";
 import { buildStatusSink } from "./status";
 import { D1Db } from "./status/d1";
 
@@ -68,6 +68,7 @@ interface DeclareCommand {
   body?: string;
   id?: string;
   severity?: IncidentSeverity;
+  routingPath?: RoutingPath;
 }
 interface PostUpdateCommand {
   cmd: "postUpdate";
@@ -169,6 +170,7 @@ export class Incident implements DurableObject {
       name: cmd.name,
       body: cmd.body,
       severity: cmd.severity,
+      routingPath: cmd.routingPath,
     });
     const channelId = await slack.createChannel(channelName(incident.id));
     if (cmd.body) {
