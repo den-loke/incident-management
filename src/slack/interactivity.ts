@@ -13,13 +13,19 @@ import { CONFIRM_RESOLVE_ACTION, confirmResolve } from "../incidents/jointResolv
 import {
   STAKEHOLDER_TOGGLE_ACTION,
   toggleStakeholder,
+  DECLARE_ACTION,
+  openDeclareModal,
+  submitDeclareModal,
 } from "../stakeholders/service";
 
 interface BlockActionsPayload {
   type?: string;
   user?: { id?: string };
   channel?: { id?: string };
+  trigger_id?: string;
   actions?: { action_id?: string; value?: string }[];
+  // Present on view_submission payloads; read by submitDeclareModal.
+  view?: unknown;
 }
 
 /**
@@ -56,7 +62,25 @@ export async function handleSlackInteractivity(
     }
   }
 
+  if (payload?.type === "view_submission") {
+    // Modal submitted (e.g. the declare-incident modal). Do the work in the
+    // background and ack with an empty 200 to close the modal.
+    ctx.waitUntil(submitDeclareModal(env, payload as Parameters<typeof submitDeclareModal>[1]));
+    return new Response(null, { status: 200 });
+  }
+
   if (payload?.type === "block_actions") {
+    // The "Declare incident" Home-tab button opens a modal. views.open needs
+    // the trigger_id promptly, so open it inline (awaited) before we ack.
+    const action = payload.actions?.[0];
+    if (action?.action_id === DECLARE_ACTION && payload.trigger_id) {
+      try {
+        await openDeclareModal(env, payload.trigger_id);
+      } catch {
+        /* non-fatal: the modal simply won't open */
+      }
+      return new Response(null, { status: 200 });
+    }
     ctx.waitUntil(applyBlockActions(payload, env));
   }
 

@@ -12,10 +12,18 @@ import {
   toggleStakeholder,
   inviteStakeholdersToChannel,
   STAKEHOLDER_TOGGLE_ACTION,
+  DECLARE_ACTION,
+  declareModalView,
+  submitDeclareModal,
   __setStakeholderSlackClient,
 } from "../src/stakeholders/service";
 import { handleSlackInteractivity } from "../src/slack/interactivity";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
+import { FakeSummarizer } from "../src/clients/fakeOpenai";
+import {
+  __setIncidentClientOverrides,
+  __resetIncidentClientOverrides,
+} from "../src/incident";
 
 const SIGNING_SECRET = "e2e-signing-secret";
 const encoder = new TextEncoder();
@@ -74,9 +82,13 @@ describe("homeBlocks", () => {
     expect(json).toContain("Include me in future incidents");
     expect(json).toContain(STAKEHOLDER_TOGGLE_ACTION);
     expect(json).toContain("No incidents yet");
+    // Declare-incident button is always present.
+    expect(json).toContain("Declare incident");
+    expect(json).toContain(DECLARE_ACTION);
     // the toggle carries value "on" so the handler subscribes
     const actions = blocks.find((b) => b.type === "actions");
-    expect(actions.elements[0].value).toBe("on");
+    const toggle = actions.elements.find((e: any) => e.action_id === STAKEHOLDER_TOGGLE_ACTION);
+    expect(toggle.value).toBe("on");
   });
 
   it("shows an opt-out CTA and lists incidents when a stakeholder", () => {
@@ -103,7 +115,8 @@ describe("homeBlocks", () => {
     expect(json).toContain("<#C0INC1>");
     expect(json).toContain("dashboard ↗");
     const actions = blocks.find((b) => b.type === "actions");
-    expect(actions.elements[0].value).toBe("off");
+    const toggle = actions.elements.find((e: any) => e.action_id === STAKEHOLDER_TOGGLE_ACTION);
+    expect(toggle.value).toBe("off");
   });
 
   it("falls back to the dashboard link when an incident has no channel", () => {
@@ -192,6 +205,72 @@ describe("inviteStakeholdersToChannel", () => {
     await inviteStakeholdersToChannel(env as any, "C_INC");
     __setStakeholderSlackClient(undefined);
     expect(fake.invited).toHaveLength(0);
+  });
+});
+
+describe("declareModalView", () => {
+  it("builds a modal with a name input and severity select", () => {
+    const view = declareModalView() as any;
+    expect(view.type).toBe("modal");
+    expect(view.callback_id).toBe("declare_incident_modal");
+    const json = JSON.stringify(view);
+    expect(json).toContain("What's going on?");
+    expect(json).toContain("Severity");
+    expect(json).toContain("sev1");
+    expect(json).toContain("sev2");
+    expect(json).toContain("sev3");
+  });
+});
+
+describe("submitDeclareModal", () => {
+  const fake = new FakeSlackClient(false);
+  beforeEach(() => {
+    __setStakeholderSlackClient(() => fake);
+    __setIncidentClientOverrides({
+      slack: () => fake,
+      summarizer: () => new FakeSummarizer(),
+    });
+  });
+  afterEach(async () => {
+    __setStakeholderSlackClient(undefined);
+    __resetIncidentClientOverrides();
+    fake.publishedViews = [];
+    await env.DB.prepare("DELETE FROM incidents WHERE name = 'Modal-declared'").run();
+    await cleanup();
+  });
+
+  it("ignores a submission that is not the declare modal", async () => {
+    const handled = await submitDeclareModal(env as any, {
+      view: { callback_id: "some_other_modal" },
+    });
+    expect(handled).toBe(false);
+  });
+
+  it("declares an incident from the modal and re-publishes the Home tab", async () => {
+    const handled = await submitDeclareModal(env as any, {
+      user: { id: "U_DEN" },
+      view: {
+        callback_id: "declare_incident_modal",
+        state: {
+          values: {
+            declare_name_block: {
+              declare_name_input: { value: "Modal-declared" },
+            },
+            declare_sev_block: {
+              declare_sev_select: { selected_option: { value: "sev1" } },
+            },
+          },
+        },
+      },
+    });
+    expect(handled).toBe(true);
+
+    const row = await new D1Db(env.DB).get<{ name: string; severity: string }>(
+      "SELECT name, severity FROM incidents WHERE name = 'Modal-declared'",
+    );
+    expect(row).toMatchObject({ name: "Modal-declared", severity: "sev1" });
+    // Home tab re-published for the submitter.
+    expect(fake.publishedViews.some((v) => v.userId === "U_DEN")).toBe(true);
   });
 });
 
