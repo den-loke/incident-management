@@ -130,14 +130,19 @@ Detail on the real gaps:
   set — not a routing-rule builder. (On-call engagement per path + alert-routing hooks
   build on this next.)
 
-- **Alert routing.** *Medium.* incident.io separates the inbound **alert** from where
-  it goes. For us (hard-coded, not a rule builder): a small fixed mapping from an alert's
-  attributes (source, severity, a `route`/`service` field in the payload) to → engage
-  on-call escalation, and/or forward to a Slack channel, and/or auto-open an incident on
-  a given routing path. Keeps the alert→incident bridge but adds the "which path / who"
-  decision. Pairs with routing paths above.
+- **Alert routing.** *Medium.* **✅ SHIPPED (decision layer).** An inbound alert carries
+  a `route` (`internal`|`external`, migration 0012; default internal), and a fixed
+  route→action table (`src/oncall/routing.ts`, `decideAlertRoute`) decides what happens:
+  **internal** → engage on-call escalation (page); **external** → do NOT page, post a
+  comms notice with a Create-incident button to `ONCALL_FALLBACK_CHANNEL` for a human to
+  promote. `POST /api/alerts` accepts `route` and calls `routeNewAlert` instead of an
+  unconditional `escalateNew` — this is where "external = no on-call page" actually bites
+  (on-call is engaged by an alert, never by declaring an incident). Promoting an alert
+  carries its `route` → the incident's `routing_path`. Hard-coded, not a rule builder.
 
-  **Killer use case — upstream/partner incidents (Den, 2026-09-03).** Monitor
+  **Killer use case — upstream/partner incidents (Den, 2026-09-03).** *Follow-on, not
+  yet built:* the routing layer above is ready; what remains is the **partner
+  status-page monitor** source. Monitor
   **partner/upstream status pages** (many expose a Statuspage.io/Atom/JSON feed or
   webhook). When a watched partner posts an incident, run a fixed workflow: **prompt to
   update our status page** (a component depends on that partner) and/or **prompt to open

@@ -69,10 +69,14 @@ collapse incident.io config screens into "point at a Slack group" or "one fixed
 shape". Rough value order:
 
 - **Routing paths: internal vs external incidents** — **✅ DONE** (`routing_path` on
-  incidents, migration 0011; external = Support-Lead-only roles, internal = full shape;
-  selectable in Slack declare modal + web + `POST /api/incidents`; badge on the card).
-  Next on this: gate **on-call engagement** by path (external → no page) and hook
-  **alert routing** into it.
+  incidents, migration 0011; external = Support-Lead-only roles). **On-call is now
+  gated by route too** — see alert routing.
+- **Alert routing** — **✅ DONE (decision layer)** (`route` on alerts, migration 0012;
+  `decideAlertRoute`/`routeNewAlert`: internal pages on-call, external posts a comms
+  notice + Create-incident button and does NOT page; promote carries route → incident
+  path). **Next on this:** the **partner status-page monitor** source (poll/subscribe to
+  upstream Statuspage/JSON feeds → emit `route:"external"` alerts → prompt status-page
+  update / open external incident). The routing layer is ready for it.
 - **Response teams = linked Slack user groups** — link an "Engineering response" and a
   "Customer support response" Slack usergroup; membership managed in Slack, not our
   app. One config constant per team. Replaces incident.io "Teams".

@@ -161,6 +161,7 @@ export async function promoteAlertToIncident(
     alert.title,
     alert.body ?? undefined,
     (alert.severity as never) ?? undefined,
+    alert.route, // the alert's route becomes the incident's routing path
   );
   await new D1Db(env.DB).run("UPDATE oncall_alerts SET incident_id = ? WHERE id = ?", [
     incidentId,
