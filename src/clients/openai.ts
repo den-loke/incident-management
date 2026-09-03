@@ -42,10 +42,15 @@ const OPENAI_API = "https://api.openai.com/v1/chat/completions";
 
 /** Real OpenAI client (Chat Completions via fetch). */
 export class OpenAiSummarizer implements Summarizer {
+  private readonly model: string;
   constructor(
     private readonly apiKey: string,
-    private readonly model = "gpt-4o-mini",
-  ) {}
+    model?: string,
+  ) {
+    // Non-secret OPENAI_MODEL var, with a known-good fallback. Treat an empty /
+    // whitespace value as unset so a blank var doesn't send model:"" to the API.
+    this.model = model?.trim() ? model.trim() : "gpt-4o-mini";
+  }
 
   async summarize(
     incidentName: string,

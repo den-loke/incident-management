@@ -218,6 +218,7 @@ test, not the backbone.
 | `SLACK_SIGNING_SECRET` | Verify inbound Events API signatures | ✅ |
 | `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` | Sign in with Slack (OIDC) | ✅ |
 | `OPENAI_API_KEY` | Agentic summarization | ✅ |
+| `OPENAI_MODEL` | OpenAI model for summaries + post-mortem drafts (**var**, not secret; default `gpt-4o-mini` when unset) | ⬜ (default) |
 | `STATUSPAGE_API_KEY` | Enables the Statuspage mirror sink | ⬜ optional |
 | `STATUSPAGE_PAGE_ID` | Target Statuspage page | ⬜ (with key) |
 | `RECALLAI_API_KEY` + region | Call transcription (later) | ⬜ optional |

@@ -19,6 +19,9 @@ export interface Env {
   SLACK_CLIENT_ID: string; // Sign in with Slack (OIDC)
   SLACK_CLIENT_SECRET: string;
   OPENAI_API_KEY: string;
+  // Non-secret var: which OpenAI model to use for summaries + post-mortem drafts.
+  // Optional — falls back to a known-good default in the client when unset.
+  OPENAI_MODEL?: string;
 
   STATUSPAGE_API_KEY?: string; // optional: enables the Statuspage mirror sink
   STATUSPAGE_PAGE_ID?: string;
