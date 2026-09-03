@@ -48,20 +48,33 @@ npx wrangler d1 migrations apply incident-management-test --remote
 
 ### 4. Set secrets for that environment
 
+**Non-secret config lives in `wrangler.jsonc` `vars`** (committed, per-env — named
+envs don't inherit, so each env repeats its block). For `test` these are already
+set: `APP_BASE_URL`, `SLACK_CLIENT_ID` (public — it's in the OAuth redirect),
+`SLACK_TEAM_ID`, and the on-call defaults (`ONCALL_TZ`, `ONCALL_ROTATION_DAYS`,
+`ONCALL_ACK_TIMEOUT_MIN`). Non-secret identifiers for optional features go here too
+when you enable them: `STATUSPAGE_PAGE_ID`, `JIRA_BASE_URL`, `JIRA_EMAIL`,
+`JIRA_PROJECT_KEY`, `JIRA_ISSUE_TYPE`, `ONCALL_MANAGER`, `ONCALL_FALLBACK_CHANNEL`,
+`ONCALL_TWILIO_ACCOUNT_SID`, `ONCALL_TWILIO_FROM`, `ONCALL_CHANNEL_POLICY`.
+
+**Secrets are ONLY real credentials** — set via `wrangler secret put`:
+
 ```bash
-npx wrangler secret put SLACK_TEAM_ID        --env test
 npx wrangler secret put SLACK_BOT_TOKEN      --env test
 npx wrangler secret put SLACK_SIGNING_SECRET --env test
-npx wrangler secret put SLACK_CLIENT_ID      --env test
 npx wrangler secret put SLACK_CLIENT_SECRET  --env test
 npx wrangler secret put OPENAI_API_KEY       --env test
-# Optional — enables the Statuspage mirror sink:
-npx wrangler secret put STATUSPAGE_API_KEY   --env test
-npx wrangler secret put STATUSPAGE_PAGE_ID   --env test
+# Optional tokens, as you enable each feature:
+npx wrangler secret put STATUSPAGE_API_KEY   --env test   # + STATUSPAGE_PAGE_ID as a var
+npx wrangler secret put JIRA_API_TOKEN       --env test   # + JIRA_* ids as vars
+npx wrangler secret put ONCALL_ALERT_SECRET  --env test
+npx wrangler secret put ONCALL_TWILIO_AUTH_TOKEN --env test
 ```
 
-Do NOT set `AUTH_MODE` in a real deployment — leave it unset so Slack OIDC is
-enforced. `AUTH_MODE=bypass` is for the test runner and local no-Slack dev only.
+A `vars` entry and a same-named secret CONFLICT — a value is either a var or a
+secret, never both. Do NOT set `AUTH_MODE` in a real deployment — leave it unset so
+Slack OIDC is enforced. `AUTH_MODE=bypass` is for the test runner and local
+no-Slack dev only.
 
 ### 5. Deploy
 
