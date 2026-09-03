@@ -121,14 +121,14 @@ into "point at a Slack group" or "one opinionated shape".
 Detail on the real gaps:
 
 - **Response teams = linked Slack user groups (NOT a team-management UI).** *Small.* **✅ SHIPPED.**
-  Two fixed teams (Engineering, Customer Support) each **link a Slack user group** via a
-  config var (`TEAM_ENGINEERING_USERGROUP` / `TEAM_SUPPORT_USERGROUP` — the `S…` usergroup
-  ids); membership is managed **in Slack**, resolved on demand via `usergroups.users.list`
-  (`src/teams/service.ts`: `resolveTeam`/`resolveTeams`/`isTeamMember`, injectable
-  `UsergroupClient` seam). An unconfigured team resolves to an empty roster
-  (`configured:false`), a lookup failure is swallowed to empty (best-effort). Read-only
-  `GET /api/teams` (session-gated) + a web **Teams** section. No membership CRUD — one
-  usergroup id per team. *Replaces incident.io "Teams".*
+  Three fixed teams (Engineering, Customer Support, **Stakeholders**) each **link a Slack
+  user group** via a config var (`TEAM_ENGINEERING_USERGROUP` / `TEAM_SUPPORT_USERGROUP` /
+  `TEAM_STAKEHOLDERS_USERGROUP` — the `S…` usergroup ids); membership is managed **in Slack**,
+  resolved on demand via `usergroups.users.list` (`src/teams/service.ts`). The **Stakeholders**
+  group's members are auto-invited to every new incident channel, **unioned + de-duped** with
+  the Home-tab opt-in list (`incident_stakeholders`). Read-only `GET /api/teams` (returns the
+  three teams **plus** the opt-in stakeholder list) + a web **Teams** page listing response
+  teams and opted-in stakeholders. No membership CRUD. *Replaces incident.io "Teams".*
 
 - **Routing paths: internal vs external incidents.** *Medium — a real capability.* **✅ SHIPPED.**
   Two fixed incident shapes chosen at declare (`routing_path` on `incidents`, migration

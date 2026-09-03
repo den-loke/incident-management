@@ -10,7 +10,7 @@
 
 import type { Env } from "../env";
 
-export type TeamKey = "engineering" | "support";
+export type TeamKey = "engineering" | "support" | "stakeholders";
 
 export interface Team {
   key: TeamKey;
@@ -57,10 +57,16 @@ function clientFor(env: Env): UsergroupClient {
 const TEAM_LABELS: Record<TeamKey, string> = {
   engineering: "Engineering",
   support: "Customer Support",
+  stakeholders: "Stakeholders",
 };
 
 function usergroupIdFor(env: Env, key: TeamKey): string | null {
-  const id = key === "engineering" ? env.TEAM_ENGINEERING_USERGROUP : env.TEAM_SUPPORT_USERGROUP;
+  const id =
+    key === "engineering"
+      ? env.TEAM_ENGINEERING_USERGROUP
+      : key === "support"
+        ? env.TEAM_SUPPORT_USERGROUP
+        : env.TEAM_STAKEHOLDERS_USERGROUP;
   return id && id.trim() ? id.trim() : null;
 }
 
@@ -82,9 +88,13 @@ export async function resolveTeam(env: Env, key: TeamKey): Promise<Team> {
   return base;
 }
 
-/** Both fixed teams, resolved. Used by the web Teams view. */
+/** All fixed teams, resolved. Used by the web Teams view. */
 export async function resolveTeams(env: Env): Promise<Team[]> {
-  return [await resolveTeam(env, "engineering"), await resolveTeam(env, "support")];
+  return [
+    await resolveTeam(env, "engineering"),
+    await resolveTeam(env, "support"),
+    await resolveTeam(env, "stakeholders"),
+  ];
 }
 
 /** Is a Slack user a member of the given team's linked group? False when unconfigured. */

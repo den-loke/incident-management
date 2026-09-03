@@ -269,6 +269,14 @@ export function fetchHistory(filters: { severity?: string; routing_path?: string
   return getList(`/api/history${qs ? `?${qs}` : ""}`, "incidents");
 }
 
-export function fetchTeams(): Promise<import("@/types").Team[]> {
-  return getList(`/api/teams`, "teams");
+export interface TeamsResponse {
+  teams: import("@/types").Team[];
+  stakeholder_optins: string[];
+}
+export function fetchTeams(): Promise<TeamsResponse> {
+  return fetch(`/api/teams`, { credentials: "same-origin", headers: { accept: "application/json" } }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<TeamsResponse>;
+  });
 }

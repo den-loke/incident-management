@@ -48,14 +48,15 @@ describe("linked Slack-group teams (service)", () => {
     expect(t.members).toEqual([]); // failure → empty, not thrown
   });
 
-  it("resolveTeams returns both fixed teams; isTeamMember checks membership", async () => {
-    __setUsergroupClient(fakeClient({ S_ENG: ["U1"], S_SUP: ["U9"] }));
-    const e = baseEnv({ TEAM_ENGINEERING_USERGROUP: "S_ENG", TEAM_SUPPORT_USERGROUP: "S_SUP" });
+  it("resolveTeams returns all three fixed teams; isTeamMember checks membership", async () => {
+    __setUsergroupClient(fakeClient({ S_ENG: ["U1"], S_SUP: ["U9"], S_STK: ["U5"] }));
+    const e = baseEnv({ TEAM_ENGINEERING_USERGROUP: "S_ENG", TEAM_SUPPORT_USERGROUP: "S_SUP", TEAM_STAKEHOLDERS_USERGROUP: "S_STK" });
     const teams = await resolveTeams(e);
-    expect(teams.map((t) => t.key)).toEqual(["engineering", "support"]);
+    expect(teams.map((t) => t.key)).toEqual(["engineering", "support", "stakeholders"]);
     expect(await isTeamMember(e, "engineering", "U1")).toBe(true);
     expect(await isTeamMember(e, "engineering", "U9")).toBe(false);
     expect(await isTeamMember(e, "support", "U9")).toBe(true);
+    expect(await isTeamMember(e, "stakeholders", "U5")).toBe(true);
   });
 });
 
@@ -66,11 +67,13 @@ describe("GET /api/teams route", () => {
     const cookie = `${SESSION_COOKIE}=${await signSession(makeSession({ user_id: "U1", team_id: TEAM, name: "Den" }), SECRET)}`;
     const res = await SELF.fetch("https://x/api/teams", { headers: { Cookie: cookie } });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { teams: { key: string; members: string[]; configured: boolean }[] };
+    const body = (await res.json()) as { teams: { key: string; members: string[]; configured: boolean }[]; stakeholder_optins: string[] };
     const eng = body.teams.find((t) => t.key === "engineering")!;
     expect(eng.configured).toBe(true); // TEAM_ENGINEERING_USERGROUP bound in vitest.config
     expect(eng.members).toEqual(["U_A", "U_B"]);
     const sup = body.teams.find((t) => t.key === "support")!;
     expect(sup.configured).toBe(false); // no support usergroup bound
+    expect(body.teams.find((t) => t.key === "stakeholders")).toBeTruthy(); // third team present
+    expect(Array.isArray(body.stakeholder_optins)).toBe(true); // opt-in list included
   });
 });

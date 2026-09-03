@@ -28,7 +28,7 @@ export const ROUTING_PATH_LABEL: Record<RoutingPath, string> = {
 
 // --- Response teams (GET /api/teams) — linked Slack user groups, read-only ---
 export interface Team {
-  key: "engineering" | "support";
+  key: "engineering" | "support" | "stakeholders";
   label: string;
   usergroup_id: string | null;
   members: string[];
