@@ -140,9 +140,14 @@ Detail on the real gaps:
   (on-call is engaged by an alert, never by declaring an incident). Promoting an alert
   carries its `route` → the incident's `routing_path`. Hard-coded, not a rule builder.
 
-  **Killer use case — upstream/partner incidents (Den, 2026-09-03).** *Follow-on, not
-  yet built:* the routing layer above is ready; what remains is the **partner
-  status-page monitor** source. Monitor
+  **Killer use case — upstream/partner incidents (Den, 2026-09-03).** **✅ SHIPPED.**
+  A **partner status-page monitor** (`src/oncall/partnerMonitor.ts`) polls a configured
+  list of upstream status pages (`PARTNER_STATUS_FEEDS` var — Statuspage.io-style
+  `…/api/v2/status.json`) on the 1-min cron, throttled to every 5th minute. When a
+  partner is not operational it emits a `route:"external"` alert (→ comms notice +
+  Create-incident button, **no on-call page**, indicator→severity), dedup'd per partner
+  so it fires once; auto-resolves when the partner recovers. Config var, not a
+  management UI. Monitor
   **partner/upstream status pages** (many expose a Statuspage.io/Atom/JSON feed or
   webhook). When a watched partner posts an incident, run a fixed workflow: **prompt to
   update our status page** (a component depends on that partner) and/or **prompt to open

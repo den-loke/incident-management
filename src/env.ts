@@ -51,4 +51,9 @@ export interface Env {
   ONCALL_TWILIO_AUTH_TOKEN?: string; // also validates inbound Twilio webhooks
   ONCALL_TWILIO_FROM?: string; // Twilio sending number (E.164)
   ONCALL_CHANNEL_POLICY?: string; // optional override of the L0/L1/L2 channel policy
+
+  // --- Partner status-page monitor (see ROADMAP "Alert routing" killer case). ---
+  // JSON array of watched partners: [{"id","name","url"}] where url is a
+  // Statuspage.io-style summary endpoint (…/api/v2/status.json). Unset = disabled.
+  PARTNER_STATUS_FEEDS?: string;
 }

@@ -231,6 +231,7 @@ test, not the backbone.
 | `ONCALL_ALERT_SECRET` | HMAC secret for `POST /api/alerts` | ⬜ (for alerts) |
 | `ONCALL_TWILIO_ACCOUNT_SID` / `ONCALL_TWILIO_AUTH_TOKEN` / `ONCALL_TWILIO_FROM` | Twilio SMS/voice paging (unset = disabled; token also validates inbound Twilio webhooks) | ⬜ optional |
 | `ONCALL_CHANNEL_POLICY` | Override the L0/L1/L2 notifier channel policy | ⬜ optional |
+| `PARTNER_STATUS_FEEDS` | JSON `[{id,name,url}]` of upstream status pages to monitor (Statuspage `…/api/v2/status.json`); unset = disabled | ⬜ optional |
 | `AUTH_MODE` | `bypass` for E2E; unset/`slack` in prod | ⬜ (E2E only) |
 
 ---
