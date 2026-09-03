@@ -71,12 +71,11 @@ shape". Rough value order:
 - **Routing paths: internal vs external incidents** — **✅ DONE** (`routing_path` on
   incidents, migration 0011; external = Support-Lead-only roles). **On-call is now
   gated by route too** — see alert routing.
-- **Alert routing** — **✅ DONE (decision layer)** (`route` on alerts, migration 0012;
-  `decideAlertRoute`/`routeNewAlert`: internal pages on-call, external posts a comms
-  notice + Create-incident button and does NOT page; promote carries route → incident
-  path). **Next on this:** the **partner status-page monitor** source (poll/subscribe to
-  upstream Statuspage/JSON feeds → emit `route:"external"` alerts → prompt status-page
-  update / open external incident). The routing layer is ready for it.
+- **Alert routing** — **✅ DONE**, incl. the **partner status-page monitor** (poll
+  `PARTNER_STATUS_FEEDS` on the 1-min cron / every 5th min → non-operational partner
+  emits a `route:"external"` alert → comms notice + Create-incident button, no page;
+  auto-resolves on recovery; `src/oncall/partnerMonitor.ts`). The whole alert-routing +
+  upstream/partner story is now shipped.
 - **Response teams = linked Slack user groups** — link an "Engineering response" and a
   "Customer support response" Slack usergroup; membership managed in Slack, not our
   app. One config constant per team. Replaces incident.io "Teams".
