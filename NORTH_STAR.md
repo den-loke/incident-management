@@ -61,21 +61,36 @@ durability beat features.
 
 ## Next goal (the frontier)
 
-The on-call epic and the **incident action buttons in Slack** (all actions as
-buttons/modals on the incident-controls panel, slash commands now optional —
-`src/incidents/controls.ts`) are both **done**. The build is now feature-complete
-against the roadmap's capability gaps; what remains is the deferred/coupled work,
-none of which is a clear single next slice — pick by value when picking up:
+The on-call epic and the **incident action buttons in Slack** are both **done**.
+On 2026-09-03 Den reviewed the incident.io sidebar and set a fresh batch of
+directions (full detail in `ROADMAP.md` → "Next (from incident.io sidebar review)").
+Through-line unchanged: single-tenant, hard-coded, Slack-native — several of these
+collapse incident.io config screens into "point at a Slack group" or "one fixed
+shape". Rough value order:
 
-- **Emoji accept/reject producers not yet wired** — the substrate exists
-  (`incident_suggestions` + `applyReaction`); wire the remaining producers
-  (severity-bump suggestion, auto-drafted status update ✅/❌). *Smallest, self-contained.*
-- **Real StatuspageSink** + the ≥severity "post to the status page?" prompt (the one
-  human 👍 gate) — the outbound-to-customers mirror. *Larger; unblocks the prompt.*
-- **Status-page fixture/preview route** (`?fixture=<name>` + `scripts/shoot-states.ts`)
-  for visual verification — also enables screenshotting the new panels/sections.
-- Deferred, own effort: Recall.ai call transcription, per-env custom domains, a
-  dedicated push/notification app.
+- **Routing paths: internal vs external incidents** — the most substantive new idea.
+  A fixed small set of incident shapes chosen at declare (e.g. external/upstream-POS =
+  Customer-Support-Lead only, no Eng Lead, no on-call page; internal = full shape).
+  Each path fixes which roles apply, whether on-call engages, and the comms surface.
+- **Response teams = linked Slack user groups** — link an "Engineering response" and a
+  "Customer support response" Slack usergroup; membership managed in Slack, not our
+  app. One config constant per team. Replaces incident.io "Teams".
+- **Scheduled maintenance** — first-class planned windows; flip components to
+  `under_maintenance` for the window; no post-mortem.
+- **Insights dashboards** — aggregate MTTR/MTTA/volume/action-item analytics on the
+  existing `/api/reports` metrics ("definitely useful").
+- **Historical incidents + follow-up action status** — browsable past-incident history
+  + standing "outstanding action items" view.
+- **Alerts: inbound email via Zendesk** — a mailbox/trigger forwards to `/api/alerts`,
+  behind the alert-source abstraction (one adapter).
+- **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
+  support is always-on so has no rotation.
+- **Escalations list** — standalone view over the `oncall_escalations` trail; not every
+  incident has one.
+- Parked / likely out of scope: **Catalog** (multi-tenant tooling; our fixed component
+  list covers it). Still deferred, own effort: real StatuspageSink + ≥severity Statuspage
+  prompt, the not-yet-wired emoji ✅/❌ producers, status-page fixture/preview route,
+  Recall.ai, per-env custom domains, dedicated push app.
 
 ## How to work (the loop)
 
