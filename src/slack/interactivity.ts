@@ -10,6 +10,8 @@ import { D1Db } from "../status/d1";
 import { CLAIM_ACTION_PREFIX, claimRole } from "../roles/service";
 import { isIncidentRole } from "../roles/types";
 import { CONFIRM_RESOLVE_ACTION, confirmResolve } from "../incidents/jointResolve";
+import { ACK_ACTION_PREFIX, CREATE_INCIDENT_ACTION_PREFIX } from "../oncall/notifier";
+import { ackAlert, promoteAlertToIncident } from "../oncall/escalation";
 import {
   STAKEHOLDER_TOGGLE_ACTION,
   toggleStakeholder,
@@ -100,6 +102,20 @@ async function applyBlockActions(
   // it MUST be handled before the channel-scoped lookup below.
   if (action.action_id === STAKEHOLDER_TOGGLE_ACTION) {
     await toggleStakeholder(env, userId, action.value !== "off");
+    return;
+  }
+
+  // On-call alert Ack / Create-incident. Alerts can fire in the fallback channel
+  // (not a mapped incident channel), so these are handled BEFORE the channel gate.
+  if (action.action_id.startsWith(ACK_ACTION_PREFIX)) {
+    const alertId = action.value ?? action.action_id.slice(ACK_ACTION_PREFIX.length);
+    await ackAlert(env, alertId, userId);
+    return;
+  }
+  if (action.action_id.startsWith(CREATE_INCIDENT_ACTION_PREFIX)) {
+    const alertId =
+      action.value ?? action.action_id.slice(CREATE_INCIDENT_ACTION_PREFIX.length);
+    await promoteAlertToIncident(env, alertId);
     return;
   }
 
