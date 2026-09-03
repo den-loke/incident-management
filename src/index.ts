@@ -32,6 +32,7 @@ import { listFollowUps, listIncidentHistory } from "./reporting/followups";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
+import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } from "./oncall/zendesk";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
@@ -221,6 +222,29 @@ export default {
       });
       // A genuinely new firing alert is ROUTED: internal → page on-call; external
       // (upstream/partner) → post a comms notice, don't page. See oncall/routing.ts.
+      if (outcome.result === "created") {
+        ctx.waitUntil(routeNewAlert(env, outcome.alert));
+      }
+      return json(outcome, outcome.result === "created" ? 201 : 200);
+    }
+
+    // --- Zendesk webhook receiver: one more alert SOURCE (adapter over the same
+    // pipeline). Zendesk trigger webhook POSTs here, signed with a shared secret
+    // (X-Signature: sha256=<hex> over the raw body) keyed on ZENDESK_WEBHOOK_SECRET.
+    // See docs/DEPLOY.md. Defaults to route:"external" (customer-facing). ---
+    if (request.method === "POST" && url.pathname === "/api/alerts/zendesk") {
+      const raw = await request.text();
+      const ok = await verifyZendeskSignature(request.headers, raw, env.ZENDESK_WEBHOOK_SECRET);
+      if (!ok) return json({ error: "bad_signature" }, 401);
+      let parsed: ZendeskWebhookBody | null = null;
+      try {
+        parsed = raw ? (JSON.parse(raw) as ZendeskWebhookBody) : null;
+      } catch {
+        return json({ error: "invalid_json" }, 400);
+      }
+      const mapped = parsed ? mapZendeskWebhook(parsed) : null;
+      if (!mapped) return json({ error: "unmappable_payload" }, 400);
+      const outcome = await ingestAlert(env, mapped.input);
       if (outcome.result === "created") {
         ctx.waitUntil(routeNewAlert(env, outcome.alert));
       }
