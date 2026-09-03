@@ -18,8 +18,13 @@ config surface.
   (`postMessage`/`postBlocks`), and the `openIncident` path. On-call *feeds* the
   incident engine; it does not fork it.
 
-Out of scope: paid paging vendors (PagerDuty/Opsgenie), SMS/voice/phone paging,
+Out of scope: paid paging vendors as *managed services* (PagerDuty/Opsgenie),
 multi-team routing, per-service ownership graphs, configurable escalation builders.
+
+**SMS/voice paging IS in scope** via a self-hosted **Twilio** integration (GoAlert-style),
+added behind a `Notifier` abstraction so Slack stays the always-on path and Twilio is an
+optional, config-gated second channel (§3a). A **dedicated notification app** (mobile/PWA
+push client) is **deferred** — its own large effort, tracked in §Later, not this epic.
 
 ---
 
@@ -33,6 +38,7 @@ eligible only if `active = 1`.
 ```
 id          TEXT PRIMARY KEY          -- Slack user id (U...)
 name        TEXT NOT NULL
+phone       TEXT                      -- E.164 (+61...) for Twilio SMS/voice; NULL = Slack-only
 active      INTEGER NOT NULL DEFAULT 1
 sort_order  INTEGER NOT NULL DEFAULT 0  -- rotation order
 ```
@@ -76,6 +82,8 @@ id         TEXT PRIMARY KEY
 alert_id   TEXT NOT NULL REFERENCES oncall_alerts(id)
 level      INTEGER NOT NULL         -- 0 primary, 1 next-responder+manager, 2 channel broadcast (terminal)
 target     TEXT NOT NULL            -- Slack user id paged; channel id at level 2
+channel    TEXT NOT NULL DEFAULT 'slack'  -- 'slack' | 'sms' | 'voice' — which notifier fired
+provider_sid TEXT                   -- Twilio Message/Call SID, for correlating a phone ack back to this row
 fired_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 acked_at   TEXT
 acked_by   TEXT
@@ -138,6 +146,41 @@ a user), and `level = 2`; the sweep treats a `level = 2` row as terminal.
 
 ---
 
+## 3a. Notifiers — SMS/voice paging via Twilio (GoAlert-style)
+
+The escalation ladder decides **who** to page at what level; a **`Notifier`** decides
+**how** they're reached. Same isolation pattern as `StatuspageSink`: Slack always on,
+Twilio optional and config-gated, so an unconfigured or failing Twilio never breaks the
+Slack path.
+
+```
+interface Notifier { page(target: Responder, alert: Alert, level: number): Promise<PageResult>; }
+```
+- **`SlackNotifier`** (always on) — DM + channel mention + **Ack**/**Create incident**
+  buttons (exactly §3 level 0/1, level 2 = `@channel`). Records `channel='slack'`.
+- **`TwilioNotifier`** (optional) — sends **SMS** and/or places a **voice call** via the
+  Twilio REST API (`ONCALL_TWILIO_*` env). Records `channel='sms'|'voice'` and the
+  returned **Message/Call SID** in `oncall_escalations.provider_sid` for ack correlation.
+  Skipped for a responder with no `phone`, and skipped entirely when Twilio env is unset
+  (like `StatuspageSink` when Statuspage is unconfigured).
+
+**Per-level channel policy** (hard-coded default, not a config builder; env-overridable):
+- **L0** — Slack + SMS
+- **L1** — Slack + SMS + **voice call** (a ringing phone is the "wake up" signal)
+- **L2** — Slack `@channel` **only** (phone-blasting the whole team is rarely wanted)
+
+**Phone ack** — the piece GoAlert exists for; ack from any channel resolves to the same
+`oncall_ack` logic:
+- **SMS ack**: responder replies `Y`/`ACK` → Twilio inbound webhook `POST /api/twilio/sms`
+  (signature-validated with `ONCALL_TWILIO_AUTH_TOKEN` via Twilio's `X-Twilio-Signature`).
+  Match the sender's `phone` → open alert → ack.
+- **Voice ack**: TwiML "press 1 to acknowledge" → `POST /api/twilio/voice`; a `Digits=1`
+  gather acks. Correlate by `provider_sid`.
+Both set `acked_at/acked_by` and stop the ladder, identical to the Slack button — ack
+source is uniform, only the entry point differs.
+
+---
+
 ## 4. Alert ingestion (HTTP source only)
 
 - **Endpoint**: `POST /api/alerts` (public but **HMAC-verified** with
@@ -192,6 +235,10 @@ ONCALL_ACK_TIMEOUT_MIN    default 10
 ONCALL_MANAGER            Slack user id (level-1 backstop)
 ONCALL_FALLBACK_CHANNEL   Slack channel id if nobody is on call
 ONCALL_ALERT_SECRET       HMAC secret for POST /api/alerts
+ONCALL_TWILIO_ACCOUNT_SID Twilio account SID   (unset = Twilio notifier disabled)
+ONCALL_TWILIO_AUTH_TOKEN  Twilio auth token (also validates inbound Twilio webhooks)
+ONCALL_TWILIO_FROM        Twilio sending number (E.164)
+ONCALL_CHANNEL_POLICY     optional override of the L0/L1/L2 channel policy (default per §3a)
 ```
 `wrangler.jsonc`: add `[triggers] crons` (daily shift-gen + ~1-min escalation sweep) to
 **top level and both named envs** (named envs don't inherit — same gotcha already fixed
@@ -214,14 +261,26 @@ Cases:
 - Empty rotation → alert still lands in the fallback channel, no error.
 - **Create incident** button promotes an alert: `declareIncident` called, severity hint
   threaded, `incident_id` linked.
+- **Twilio** (with a fake Twilio client, like `FakeSlackClient`): `TwilioNotifier` no-ops
+  when env is unset; SMS/voice fire per the L0/L1 channel policy and record
+  `channel`/`provider_sid`; a responder with no `phone` is skipped without error; inbound
+  `POST /api/twilio/sms` (`Y`/`ACK`) and `POST /api/twilio/voice` (`Digits=1`) both ack the
+  matching alert and stop the ladder; a bad `X-Twilio-Signature` is rejected (403).
 
 ## 9. Build order (PR slices)
 1. `0008` migration + `whoIsOnCall`/`generateShifts` service + shift-gen cron + rotation tests.
 2. `POST /api/alerts` (HMAC) + dedup/auto-resolve + alerts tests.
-3. Escalation ladder + `sweepEscalations` cron + Slack ack/page buttons + tests.
-4. Alert→incident button + `/inc escalate` + bridge tests.
-5. Web On-call section (rotation + open alerts + override/ack/create buttons).
-6. `docs/ARCHITECTURE.md` + `ROADMAP.md` updates; move on-call to Shipped.
+3. Escalation ladder + `sweepEscalations` cron + `Notifier`/`SlackNotifier` + Slack ack/page buttons + tests.
+4. `TwilioNotifier` (SMS + voice) behind the `Notifier` interface + inbound
+   `/api/twilio/sms`/`/api/twilio/voice` ack webhooks + channel policy + Twilio tests.
+5. Alert→incident button + `/inc escalate` + bridge tests.
+6. Web On-call section (rotation + open alerts + override/ack/create buttons).
+7. `docs/ARCHITECTURE.md` + `ROADMAP.md` updates; move on-call to Shipped.
+
+### Later (deferred, own spec)
+- **Dedicated notification app** — a mobile/PWA push client (device registration,
+  APNs/FCM, in-app ack) as a richer alternative to SMS/voice. Large standalone effort;
+  parked alongside Recall.ai/custom-domains, not part of this epic.
 
 ## 10. Decisions (resolved — this is the contract slice 1 builds against)
 - **Changeover** — **Monday 10:00 `Australia/Melbourne`** (`ONCALL_TZ` env-overridable).
@@ -241,3 +300,7 @@ Cases:
   click. Revisit only if noise proves otherwise.
 - **Alert secret** — **one shared `ONCALL_ALERT_SECRET`, reusing the Slack HMAC helper.**
   Single-tenant with few sources; per-source secrets are multi-tenant thinking.
+- **SMS/voice paging** — **self-hosted Twilio behind a `Notifier` abstraction** (§3a),
+  config-gated like `StatuspageSink`; Slack always on, Twilio optional. Phone ack (SMS
+  `Y`/`ACK`, voice press-1) resolves to the same `oncall_ack` path. Channel policy
+  L0=Slack+SMS, L1=+voice, L2=Slack-only. A **dedicated push app is deferred** (§Later).
