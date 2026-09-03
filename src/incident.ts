@@ -84,11 +84,15 @@ interface MessageCommand {
   user: string;
   text: string;
 }
+interface SummarizeCommand {
+  cmd: "summarize";
+}
 type Command =
   | DeclareCommand
   | PostUpdateCommand
   | ResolveCommand
-  | MessageCommand;
+  | MessageCommand
+  | SummarizeCommand;
 
 /**
  * One Durable Object instance == one incident. See docs/ARCHITECTURE.md §2.
@@ -143,6 +147,8 @@ export class Incident implements DurableObject {
         // Inbound channel activity — recorded implicitly by Slack; the DO
         // simply keeps its alarm alive. Nothing to persist here yet.
         return json({ ok: true });
+      case "summarize":
+        return json(await this.summarizeNow());
       default:
         return json({ error: "unknown_command" }, 400);
     }
@@ -231,6 +237,29 @@ export class Incident implements DurableObject {
     // Stop the loop: cancel any pending alarm so alarm() never reschedules.
     await this.state.storage.deleteAlarm();
 
+    return { ok: true };
+  }
+
+  /**
+   * On-demand summary (conversational "@bot summarize"/"update please"): pull
+   * recent channel messages, summarize, append as an update, and post it now —
+   * independent of the 15-min alarm cadence. Always posts (unlike the alarm,
+   * which only posts on new activity).
+   */
+  private async summarizeNow(): Promise<{ ok: true }> {
+    const incidentId = await this.requireIncidentId();
+    const channelId = (await this.state.storage.get<string>(KEY.channelId))!;
+    const incidentName =
+      (await this.state.storage.get<string>(KEY.incidentName)) ?? "Incident";
+
+    const slack = this.buildSlack();
+    const messages = await slack.history(channelId);
+    const body = await this.buildSummarizer().summarize(incidentName, messages);
+
+    await this.buildSink().appendIncidentUpdate(incidentId, body, "monitoring");
+    await this.state.storage.put(KEY.status, "monitoring");
+    await this.state.storage.put(KEY.lastMessageCount, messages.length);
+    await slack.postMessage(channelId, body);
     return { ok: true };
   }
 

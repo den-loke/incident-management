@@ -103,6 +103,15 @@ export async function postIncidentUpdate(
   await stub.fetch(commandRequest({ cmd: "postUpdate", body, status }));
 }
 
+/** Trigger an on-demand summary (conversational "@bot update please" / "summarize"). */
+export async function summarizeIncidentNow(
+  env: Env,
+  incidentId: string,
+): Promise<void> {
+  const stub = stubForIncident(env, incidentId);
+  await stub.fetch(commandRequest({ cmd: "summarize" }));
+}
+
 /** Resolve an incident with an optional closing note, then auto-draft its post-mortem. */
 export async function resolveIncident(
   env: Env,

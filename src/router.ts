@@ -7,6 +7,22 @@ import {
 } from "./incidents/commands";
 import { requestResolve } from "./incidents/jointResolve";
 import { publishHomeView } from "./stakeholders/service";
+import { buildIntentClassifier, applyIntent } from "./incidents/intent";
+import type { SlackClient } from "./clients/slack";
+import { WebApiSlackClient } from "./clients/slack";
+import { FakeSlackClient } from "./clients/fakeSlack";
+
+// Slack client builder for router-initiated posts (conversational escalate +
+// intent acks). Mirrors the seam in the other services.
+let routerSlackOverride: ((env: Env) => SlackClient) | undefined;
+export function __setRouterSlackClient(f: ((env: Env) => SlackClient) | undefined): void {
+  routerSlackOverride = f;
+}
+export function buildRouterSlack(env: Env): SlackClient {
+  if (routerSlackOverride) return routerSlackOverride(env);
+  if (env.AUTH_MODE === "bypass") return new FakeSlackClient(true);
+  return new WebApiSlackClient(env.SLACK_BOT_TOKEN);
+}
 
 /**
  * Routes verified Slack events to the right Incident Durable Object.
@@ -51,10 +67,12 @@ export interface RouteResult {
     | "routed"
     | "resolved"
     | "resolve-requested"
+    | "mention-actioned"
     | "home-published"
     | "ignored";
   incidentId?: string;
   channelId?: string;
+  intent?: string;
 }
 
 /** Parse a declare trigger's text into an incident name. */
@@ -125,6 +143,31 @@ export async function routeSlackEvent(
   if (!row) return { action: "ignored" };
 
   const stub = env.INCIDENT.get(env.INCIDENT.idFromName(row.do_id));
+
+  // Conversational control: an @-mention of the bot in a mapped incident channel
+  // is interpreted as a natural-language instruction (update / status / severity
+  // / escalate / summarize / resolve) and dispatched through the SHARED command
+  // functions — a third surface alongside slash commands + the button panel.
+  // (A resolve intent still flows through the joint-resolve requestResolve path.)
+  if (event.type === "app_mention") {
+    const intent = await buildIntentClassifier(env).classify(event.text ?? "");
+    if (intent.action === "unknown") {
+      await buildRouterSlack(env)
+        .postMessage(
+          event.channel,
+          `Sorry <@${event.user ?? "there"}>, I didn't catch that. Try: "update please", "set status to identified", "change severity to sev1", "escalate to @someone", "summary?", or "resolve".`,
+        )
+        .catch(() => {});
+      return { action: "mention-actioned", incidentId: row.incident_id, channelId: event.channel, intent: "unknown" };
+    }
+    const outcome = await applyIntent(env, row.incident_id, event.channel, event.user ?? "unknown", intent);
+    return {
+      action: "mention-actioned",
+      incidentId: row.incident_id,
+      channelId: event.channel,
+      intent: outcome.applied,
+    };
+  }
 
   // A resolve trigger in the incident's own channel REQUESTS resolution: it
   // posts a Confirm button; a different person confirms to actually resolve
