@@ -99,6 +99,10 @@ shape". Rough value order:
   `docs/DEPLOY.md`. Webhook, not mail ingestion — one adapter, alert model unchanged).
 - **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
   support is always-on so has no rotation.
+- **MCP connector (analytics-first)** — **✅ DONE** (`src/mcp/server.ts`: MCP-over-HTTP
+  at `POST /mcp`, bearer-token via `MCP_TOKEN`; read-only tools `get_report`,
+  `get_insights`, `list_follow_ups`, `list_incidents` wrapping the reporting layer;
+  no SDK dep. Live-response tools remain a later, secondary addition).
 - **Post-incident flow (surface the fixed checklist)** — **✅ DONE**
   (`src/postmortem/postIncidentFlow.ts`: `buildPostIncidentFlow` derives the fixed
   checklist per incident — resolved → drafted → items captured → items filed → published;

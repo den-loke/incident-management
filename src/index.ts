@@ -35,6 +35,7 @@ import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
 import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } from "./oncall/zendesk";
 import { resolveTeams } from "./teams/service";
+import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
@@ -277,6 +278,31 @@ export default {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
       return json({ teams: await resolveTeams(env) });
+    }
+
+    // --- MCP connector (analytics-first, read-only). MCP-over-HTTP: a client
+    // POSTs JSON-RPC 2.0 to /mcp. Bearer-token auth (MCP_TOKEN; unset = disabled).
+    // Accepts a single request or a batch array; notifications get no reply. ---
+    if (request.method === "POST" && url.pathname === "/mcp") {
+      if (!verifyMcpAuth(request.headers, env.MCP_TOKEN)) {
+        return json({ error: "unauthorized" }, 401);
+      }
+      let payload: unknown;
+      try {
+        payload = await request.json();
+      } catch {
+        return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } }, 400);
+      }
+      if (Array.isArray(payload)) {
+        const out = [];
+        for (const req of payload) {
+          const res = await dispatchMcp(env, req);
+          if (res) out.push(res);
+        }
+        return json(out);
+      }
+      const res = await dispatchMcp(env, payload as Parameters<typeof dispatchMcp>[1]);
+      return res ? json(res) : new Response(null, { status: 204 });
     }
 
     const ackMatch = url.pathname.match(/^\/api\/oncall\/alerts\/([^/]+)\/ack$/);

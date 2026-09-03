@@ -109,7 +109,7 @@ into "point at a Slack group" or "one opinionated shape".
 | Response › **Post-mortems** | **Shipped** — auto-draft + edit/publish + Jira export. |
 | **Status pages** | Internal page **shipped**; public/branded **out of scope**; Statuspage mirror deferred. |
 | **Nexus › Catalog** | **Parked / likely out of scope** — multi-tenant service-catalog tooling. |
-| **Insights** | **✅ Shipped** — dashboards on `/api/insights` (severity/path/monthly trend + MTTR). |
+| **Insights** | **✅ Shipped** — dashboards on `/api/insights`; also exposed read-only over **MCP** (`POST /mcp`, below). |
 
 Detail on the real gaps:
 
@@ -222,17 +222,17 @@ Detail on the real gaps:
   a period selector (30d/90d/all) — no chart lib, matches the borderless stance. Builds
   on the reporting metrics.
 
-- **MCP connector for Claude (analytics-first).** *Medium — Den, 2026-09-03.* Expose
-  the tool over **MCP** so Claude (and other MCP clients) can query it in natural
-  language. Primary use is **post-hoc reporting/analysis, NOT live incident response**:
-  "how many incidents in the last quarter?", "what are the common patterns / recurring
-  root causes?", "which components fail most?", "how's our action-item backlog?".
-  Read-only analytics tools first — thin MCP wrappers over the existing reporting +
-  post-mortem + incident-history data (`/api/reports`, incident/postmortem stores) —
-  since that's where an LLM adds the most value (cross-incident pattern mining over
-  post-mortem text). Live-response tools (declare/update from Claude) are a possible
-  later addition but explicitly secondary. Auth: a scoped token (single-tenant stance).
-  Likely a small MCP server (stdio or MCP-over-HTTP) alongside/served by the Worker.
+- **MCP connector for Claude (analytics-first).** *Medium — Den, 2026-09-03.* **✅ SHIPPED.**
+  MCP-over-HTTP at **`POST /mcp`** (`src/mcp/server.ts`) — a minimal, self-contained
+  JSON-RPC 2.0 handler for the core MCP methods (`initialize` / `tools/list` /
+  `tools/call`, plus `ping` + `notifications/initialized`), no SDK dependency
+  (single-tenant, opinionated). Bearer-token auth via `MCP_TOKEN` (unset = disabled).
+  Four **read-only analytics** tools, thin wrappers over the existing reporting layer:
+  `get_report` (metrics over a period), `get_insights` (severity/path/monthly-trend +
+  MTTR breakdowns), `list_follow_ups` (cross-incident action items), `list_incidents`
+  (history with severity/path filters). This is where an LLM adds the most value —
+  cross-incident pattern mining over recorded data. Live-response tools
+  (declare/update from Claude) remain a deliberate, secondary later addition.
 
 - **Conversational control — @-mention the bot in-channel (Den, 2026-09-03).** *Medium.* **✅ SHIPPED.**
   `@Incident Management <instruction>` in a mapped incident channel is classified to an
