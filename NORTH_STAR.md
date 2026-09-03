@@ -96,8 +96,11 @@ shape". Rough value order:
   behind the alert-source abstraction (one adapter).
 - **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
   support is always-on so has no rotation.
-- **Escalations list** — standalone view over the `oncall_escalations` trail; not every
-  incident has one.
+- **Escalations list + read-only escalation-path diagram** — **✅ DONE**
+  (`src/oncall/escalationPath.ts`: `listEscalationEvents` cross-alert log +
+  `buildEscalationPath` config-derived ladder; both folded into `GET /api/oncall` as
+  `escalation_events` + `path`; web On-call **Escalations** list + read-only
+  **Escalation path** diagram).
 - Parked / likely out of scope: **Catalog** (multi-tenant tooling; our fixed component
   list covers it). Still deferred, own effort: real StatuspageSink + ≥severity Statuspage
   prompt, the not-yet-wired emoji ✅/❌ producers, status-page fixture/preview route,

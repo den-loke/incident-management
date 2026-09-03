@@ -203,10 +203,38 @@ export interface OncallRotationShift {
   is_override: number;
 }
 
+export interface OncallEscalationPathStep {
+  level: number;
+  title: string;
+  detail: string;
+  wait_minutes: number | null;
+}
+export interface OncallEscalationPath {
+  ack_timeout_minutes: number;
+  fallback_channel: string | null;
+  manager: string | null;
+  steps: OncallEscalationPathStep[];
+}
+export interface OncallEscalationEvent {
+  id: string;
+  alert_id: string;
+  alert_title: string;
+  alert_status: "firing" | "ack" | "resolved";
+  incident_id: string | null;
+  level: number;
+  target: string;
+  channel: string;
+  fired_at: string;
+  acked_at: string | null;
+  acked_by: string | null;
+}
+
 export interface OncallSection {
   now: OncallResponder | null;
   next: OncallResponder | null;
   responders: OncallResponder[];
   upcoming: OncallRotationShift[];
   open_alerts: OncallOpenAlert[];
+  path: OncallEscalationPath;
+  escalation_events: OncallEscalationEvent[];
 }

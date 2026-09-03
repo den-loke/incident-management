@@ -11,6 +11,7 @@ import type { Env } from "../env";
 import { D1Db } from "../status/d1";
 import { whoIsOnCall, nextResponder, type Responder, type Shift } from "./rotation";
 import { listOpenAlerts, type AlertRow } from "./alerts";
+import { buildEscalationPath, listEscalationEvents, type EscalationPath, type EscalationEventView } from "./escalationPath";
 
 export interface EscalationTrailRow {
   level: number;
@@ -39,6 +40,9 @@ export interface OncallSection {
   responders: Responder[];
   upcoming: RotationShiftView[];
   open_alerts: OpenAlertView[];
+  // Read-only ladder diagram (derived from config) + cross-alert escalation log.
+  path: EscalationPath;
+  escalation_events: EscalationEventView[];
 }
 
 /** All responders (for the override picker), active first then by sort order. */
@@ -86,7 +90,9 @@ export async function buildOncallSection(env: Env): Promise<OncallSection> {
   for (const a of alerts) {
     open_alerts.push({ ...a, trail: await trailFor(db, a.id) });
   }
-  return { now, next, responders, upcoming, open_alerts };
+  const path = buildEscalationPath(env);
+  const escalation_events = await listEscalationEvents(env);
+  return { now, next, responders, upcoming, open_alerts, path, escalation_events };
 }
 
 export type { Responder, Shift };

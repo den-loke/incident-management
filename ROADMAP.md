@@ -98,8 +98,8 @@ into "point at a Slack group" or "one opinionated shape".
 | **Teams** (Engineering, Support, …) | **Linked Slack user groups**, not a team-mgmt UI (below). |
 | On-call › **Alerts** | Have `POST /api/alerts`; **add a Zendesk webhook receiver** (+docs) as another source (below). |
 | On-call › **Alert routing** | **New** — route inbound alerts; **partner status-page monitor** is the killer case (below). |
-| On-call › **Escalations** | **List view** over the existing `oncall_escalations` trail (below). |
-| On-call › **Escalation paths** | Ladder is **hard-coded** — no builder; add a **read-only diagram** to explain it (below). |
+| On-call › **Escalations** | **✅ Shipped** — cross-alert escalations list over `oncall_escalations` (below). |
+| On-call › **Escalation paths** | **✅ Shipped** — read-only annotated ladder diagram (no builder; below). |
 | On-call › **Schedules** | **Shipped** — the rotation + overrides. |
 | On-call › **Maintenance** | **✅ Shipped** — scheduled maintenance windows (below). |
 | On-call › **Pay calculator** | **Out of scope** — on-call compensation calc; not our concern. |
@@ -171,20 +171,20 @@ Detail on the real gaps:
   needs no roster** — only Engineering has a rotation. Reframe the On-call section
   around the eng roster + overrides; drop any notion of a support rotation.
 
-- **Escalations list.** *Small.* A view listing escalations (who was paged, when,
-  ack state) — the `oncall_escalations` trail already exists per-alert; surface it as
-  a standalone list. **Not every incident has one** — escalations are their own thing,
-  not a per-incident requirement. (incident.io "Escalation paths" = the *config* of
-  the ladder, which for us is hard-coded — nothing to build there.)
+- **Escalations list.** *Small.* **✅ SHIPPED.** A standing cross-alert log
+  (`listEscalationEvents`, `src/oncall/escalationPath.ts`) — every escalation event
+  across ALL alerts (firing/acked/resolved), joined to alert title/status/incident,
+  newest first. Folded into `GET /api/oncall` as `escalation_events`; rendered as an
+  **Escalations** list in the web On-call section. Distinct from the per-alert trail —
+  not every incident has one.
 
-- **Escalation-path diagram (read-only, explanatory).** *Small.* Our ladder is
-  **not editable** (hard-coded L0→L1→L2, stance), but a **read-only diagram** of the
-  process is worth having — to explain to users what happens when an escalation fires.
-  Mirror incident.io's escalation-path view as documentation, not a builder: Start →
-  notify alerts channel (wait) → L1 primary on-call (ack timeout) → L2 next on-call +
-  manager → L3 `@channel` broadcast, annotated with the actual `ONCALL_*` timings.
-  Render it in the web On-call section (and/or a static diagram in docs). Explicitly
-  **view-only** — no Edit button.
+- **Escalation-path diagram (read-only, explanatory).** *Small.* **✅ SHIPPED.**
+  `buildEscalationPath` (`src/oncall/escalationPath.ts`) derives the fixed ladder purely
+  from config as an annotated set of steps (page channel → L0 primary → L1 next +
+  `@manager` → L2 `@channel`), each labelled with the real `ONCALL_ACK_TIMEOUT_MIN` wait
+  and L2 marked terminal. Folded into `GET /api/oncall` as `path`; rendered as a
+  read-only **Escalation path** diagram in the web On-call section (view-only, no Edit —
+  the ladder stays hard-coded per stance).
 
 - **Alerts = inbound monitoring + Zendesk webhooks.** *Small–Medium.* We have
   `POST /api/alerts` (HMAC) for monitoring. "Inbound email" does **not** mean we run
