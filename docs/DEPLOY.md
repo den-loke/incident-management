@@ -43,6 +43,20 @@ npx wrangler d1 migrations apply incident-management-test --remote
 - **Event Subscriptions:** request URL
   `https://incident-management-test.<subdomain>.workers.dev/slack/events`
   (the Worker answers the `url_verification` challenge automatically).
+- **Interactivity & Shortcuts:** turn on Interactivity and set the request URL
+  `https://incident-management-test.<subdomain>.workers.dev/slack/interactivity`.
+  This is what delivers role-claim buttons, the joint-resolve Confirm button, the
+  Home-tab stakeholder toggle, AND the declare-modal submission (`view_submission`)
+  — shared by the Home-tab "Declare incident" button and `/incident declare`.
+- **Slash Commands:** create one command `/incident` with request URL
+  `https://incident-management-test.<subdomain>.workers.dev/slack/commands`.
+  A single command carries all subcommands — `declare` (bare opens the shared
+  declare modal (name + severity), or pass a title to declare immediately),
+  `update <text>`, `status <investigating|identified|monitoring> [note]`,
+  `resolve [note]`, and `help`. No extra bot scopes are needed beyond those
+  already granted (`chat:write`, `channels:manage`, `channels:read`,
+  `channels:history`); the modal uses `views.open`/`views.publish`, which
+  chat:write covers.
 - Note the **Client ID**, **Client Secret**, **Signing Secret**, **Bot token**
   (`xoxb-…`), and the workspace **Team ID** (`T…`).
 

@@ -33,6 +33,11 @@ export const SEVERITY_RANK: Record<IncidentSeverity, number> = {
   sev3: 1,
 };
 
+/** Type guard: is this an incident severity string? */
+export function isIncidentSeverity(v: unknown): v is IncidentSeverity {
+  return typeof v === "string" && (INCIDENT_SEVERITIES as readonly string[]).includes(v);
+}
+
 export interface Component {
   id: string;
   name: string;
