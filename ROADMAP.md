@@ -96,7 +96,7 @@ into "point at a Slack group" or "one opinionated shape".
 | incident.io nav | Our disposition |
 |---|---|
 | **Teams** (Engineering, Support, …) | **Linked Slack user groups**, not a team-mgmt UI (below). |
-| On-call › **Alerts** | Have `POST /api/alerts`; **add a Zendesk webhook receiver** (+docs) as another source (below). |
+| On-call › **Alerts** | Have `POST /api/alerts`; **✅ Zendesk webhook receiver** `POST /api/alerts/zendesk` added (below). |
 | On-call › **Alert routing** | **New** — route inbound alerts; **partner status-page monitor** is the killer case (below). |
 | On-call › **Escalations** | **✅ Shipped** — cross-alert escalations list over `oncall_escalations` (below). |
 | On-call › **Escalation paths** | **✅ Shipped** — read-only annotated ladder diagram (no builder; below). |
@@ -186,15 +186,15 @@ Detail on the real gaps:
   read-only **Escalation path** diagram in the web On-call section (view-only, no Edit —
   the ladder stays hard-coded per stance).
 
-- **Alerts = inbound monitoring + Zendesk webhooks.** *Small–Medium.* We have
-  `POST /api/alerts` (HMAC) for monitoring. "Inbound email" does **not** mean we run
-  mail ingestion — it's a **Zendesk webhook**: configure Zendesk to fire a webhook on
-  a trigger (e.g. a ticket assigned to a given Zendesk group) at a **receiver URL** on
-  our side. So the work is small: a receiver endpoint (reuse/parallel `/api/alerts`
-  with a Zendesk-shaped adapter mapping the webhook payload → alert fields, verified
-  via a shared secret/signature) **plus setup docs** (which Zendesk trigger + webhook
-  to create, what URL, what secret). No IMAP/SMTP, no mailbox polling. Behind the same
-  alert-source abstraction; Zendesk is one adapter.
+- **Alerts = inbound monitoring + Zendesk webhooks.** *Small–Medium.* **✅ SHIPPED (Zendesk).**
+  `POST /api/alerts/zendesk` — a Zendesk trigger webhook POSTs a templated JSON body,
+  verified with a shared-secret `X-Signature: sha256=<hex>` (keyed on
+  `ZENDESK_WEBHOOK_SECRET`, same scheme as `/api/alerts`; unset = receiver disabled).
+  `src/oncall/zendesk.ts` maps the Zendesk-shaped payload → `AlertInput` (priority→severity,
+  solved/closed→resolve, `dedup_key=zendesk:<ticket id>`, defaults `route:"external"`) and
+  reuses `ingestAlert` + `routeNewAlert` — Zendesk is one adapter behind the same pipeline,
+  the alert model is unchanged. Setup docs (which trigger, webhook, URL, secret, JSON
+  template) in `docs/DEPLOY.md`. No IMAP/SMTP, no mailbox polling.
 
 - **Follow-ups (first-class) + historical incidents.** *Medium.* **✅ SHIPPED.**
   `GET /api/followups?open=` — cross-incident action items joined to their incident +

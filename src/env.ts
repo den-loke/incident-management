@@ -47,6 +47,7 @@ export interface Env {
   ONCALL_MANAGER?: string; // Slack user id — level-1 backstop mention
   ONCALL_FALLBACK_CHANNEL?: string; // Slack channel id if nobody is on call
   ONCALL_ALERT_SECRET?: string; // HMAC secret for POST /api/alerts
+  ZENDESK_WEBHOOK_SECRET?: string; // HMAC secret for POST /api/alerts/zendesk (Zendesk trigger webhook). Unset = receiver disabled.
   ONCALL_TWILIO_ACCOUNT_SID?: string; // unset = Twilio notifier disabled
   ONCALL_TWILIO_AUTH_TOKEN?: string; // also validates inbound Twilio webhooks
   ONCALL_TWILIO_FROM?: string; // Twilio sending number (E.164)

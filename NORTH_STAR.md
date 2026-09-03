@@ -92,8 +92,10 @@ shape". Rough value order:
 - **Historical incidents + follow-up action status** — **✅ DONE** (`GET /api/followups`
   cross-incident action items + `GET /api/history` browsable past incidents with filters;
   web "Follow-ups & history" section; `src/reporting/followups.ts`).
-- **Alerts: inbound email via Zendesk** — a mailbox/trigger forwards to `/api/alerts`,
-  behind the alert-source abstraction (one adapter).
+- **Alerts: Zendesk webhook receiver** — **✅ DONE** (`POST /api/alerts/zendesk`,
+  `src/oncall/zendesk.ts`: shared-secret `X-Signature` verify + Zendesk-payload→AlertInput
+  adapter over the existing `ingestAlert`/`routeNewAlert` pipeline; setup docs in
+  `docs/DEPLOY.md`. Webhook, not mail ingestion — one adapter, alert model unchanged).
 - **On-call roster mgmt (engineering only)** — surface the eng roster + overrides;
   support is always-on so has no rotation.
 - **Escalations list + read-only escalation-path diagram** — **✅ DONE**

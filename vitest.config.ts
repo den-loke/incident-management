@@ -31,6 +31,9 @@ export default defineWorkersConfig(async () => {
               // On-call alert HMAC secret so endpoint tests can forge a valid
               // X-Signature header (POST /api/alerts). See docs/SPEC_ONCALL.md §4.
               ONCALL_ALERT_SECRET: "e2e-alert-secret",
+              // Zendesk webhook HMAC secret (POST /api/alerts/zendesk). Same
+              // X-Signature scheme; see docs/DEPLOY.md.
+              ZENDESK_WEBHOOK_SECRET: "e2e-zendesk-secret",
               // Twilio auth token so inbound-webhook tests can forge a valid
               // X-Twilio-Signature (POST /api/twilio/{sms,voice}). §3a.
               ONCALL_TWILIO_AUTH_TOKEN: "e2e-twilio-token",

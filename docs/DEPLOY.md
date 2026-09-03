@@ -83,6 +83,7 @@ npx wrangler secret put STATUSPAGE_API_KEY   --env test   # + STATUSPAGE_PAGE_ID
 npx wrangler secret put JIRA_API_TOKEN       --env test   # + JIRA_* ids as vars
 npx wrangler secret put ONCALL_ALERT_SECRET  --env test
 npx wrangler secret put ONCALL_TWILIO_AUTH_TOKEN --env test
+npx wrangler secret put ZENDESK_WEBHOOK_SECRET --env test  # enables POST /api/alerts/zendesk
 ```
 
 A `vars` entry and a same-named secret CONFLICT — a value is either a var or a
@@ -115,3 +116,42 @@ npx wrangler deploy --env production
   never touches OIDC.
 - The `team_id === SLACK_TEAM_ID` check on the OIDC callback is the authorization
   gate: any member of the workspace is allowed, everyone else is rejected.
+
+## Zendesk webhook receiver (optional alert source)
+
+Turns a Zendesk trigger into an alert (an extra source alongside `POST /api/alerts`).
+This is a **webhook**, not mail ingestion — no IMAP/SMTP, no mailbox polling.
+
+1. **Set the shared secret** (above): `wrangler secret put ZENDESK_WEBHOOK_SECRET`.
+   The receiver is disabled while this is unset (all requests → `401`).
+2. **Create a Zendesk webhook** (Admin Center → Apps and integrations → Webhooks →
+   *Create webhook*, "Trigger or automation"):
+   - **Endpoint URL**: `https://<your-worker-host>/api/alerts/zendesk`
+   - **Request method**: `POST`, **Format**: JSON
+   - **Authentication**: none here — we verify a signature header instead (next step).
+3. **Sign the request.** We verify `X-Signature: sha256=<hex>` = HMAC-SHA256 of the
+   **raw JSON body** keyed on `ZENDESK_WEBHOOK_SECRET` (same scheme as `/api/alerts`).
+   Add the header in the webhook config. (If you front the webhook with a small relay
+   that computes the HMAC, point Zendesk at the relay; native Zendesk signing keys are
+   not used by this receiver.)
+4. **Create a trigger** (Admin Center → Objects and rules → Triggers) that fires the
+   webhook — e.g. *Ticket is assigned to group = "Escalations"*. Under **Actions →
+   Notify webhook**, select the webhook and template the JSON body:
+   ```json
+   {
+     "ticket": {
+       "id": "{{ticket.id}}",
+       "subject": "{{ticket.title}}",
+       "description": "{{ticket.description}}",
+       "priority": "{{ticket.priority}}",
+       "status": "{{ticket.status}}",
+       "url": "{{ticket.link}}"
+     }
+   }
+   ```
+
+**Mapping** (`src/oncall/zendesk.ts`): `priority` urgent→SEV1, high→SEV2, else SEV3;
+`status` solved/closed → an alert **resolve** (recovery), anything else → **firing**;
+`dedup_key = zendesk:<ticket id>` so re-fires fold and a later solved webhook closes
+the open alert. Defaults to **`route:"external"`** (customer-facing → comms notice +
+Create-incident button, no on-call page); send `"route":"internal"` in the body to page.
