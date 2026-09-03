@@ -105,6 +105,28 @@ export const MAINTENANCE_LABEL: Record<MaintenanceStatus, string> = {
   cancelled: "Cancelled",
 };
 
+// --- Insights (GET /api/insights) ---
+export interface InsightsBucket {
+  key: string;
+  count: number;
+  mttr_seconds: number | null;
+}
+export interface InsightsMonthPoint {
+  month: string;
+  opened: number;
+  resolved: number;
+}
+export interface Insights {
+  from: string;
+  to: string;
+  total_opened: number;
+  by_severity: InsightsBucket[];
+  by_routing_path: InsightsBucket[];
+  by_month: InsightsMonthPoint[];
+  open_action_items: number;
+  overall_mttr_seconds: number | null;
+}
+
 export const COMPONENT_LABEL: Record<ComponentStatus, string> = {
   operational: "Operational",
   degraded_performance: "Degraded",

@@ -27,6 +27,7 @@ import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
 import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
+import { buildInsights } from "./reporting/insights";
 import { runOncallScheduled } from "./oncall/cron";
 import { verifyAlertSignature } from "./oncall/alertVerify";
 import { ingestAlert } from "./oncall/alerts";
@@ -416,6 +417,15 @@ export default {
         });
       }
       return json(report);
+    }
+
+    // --- Insights dashboards (session-gated). GET /api/insights?period=7d|30d|90d|all ---
+    if (request.method === "GET" && url.pathname === "/api/insights") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const period = url.searchParams.get("period") ?? "90d";
+      const { from, to } = periodWindow(period);
+      return json(await buildInsights(new D1Db(env.DB), from, to));
     }
     const pmMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/postmortem$/);
     if (pmMatch) {

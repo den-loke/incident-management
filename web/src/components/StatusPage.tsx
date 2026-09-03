@@ -10,6 +10,7 @@ import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
 import { DeclareIncidentButton, IncidentActions } from "@/components/IncidentActions";
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { ReportPanel } from "@/components/ReportPanel";
+import { InsightsSection } from "@/components/InsightsSection";
 import { OnCallSection } from "@/components/OnCallSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
 import type { Component, Incident, StatusResponse } from "@/types";
@@ -187,6 +188,8 @@ export function StatusPage({
       </Card>
 
       <ReportPanel />
+
+      <InsightsSection />
 
       <section className="mb-8">
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

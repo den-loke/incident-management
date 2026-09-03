@@ -218,3 +218,16 @@ export function scheduleMaintenance(input: {
 export function cancelMaintenance(id: string): Promise<void> {
   return postJson(`/api/maintenance/${encodeURIComponent(id)}/cancel`, {});
 }
+
+// --- Insights ---
+
+export function fetchInsights(period: string): Promise<import("@/types").Insights> {
+  return fetch(`/api/insights?period=${encodeURIComponent(period)}`, {
+    credentials: "same-origin",
+    headers: { accept: "application/json" },
+  }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<import("@/types").Insights>;
+  });
+}
