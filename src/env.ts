@@ -30,4 +30,16 @@ export interface Env {
   JIRA_ISSUE_TYPE?: string; // defaults to "Task"
 
   AUTH_MODE?: string; // "bypass" for E2E; unset/"slack" in prod
+
+  // --- On-call (see docs/SPEC_ONCALL.md §7). All optional with sensible defaults. ---
+  ONCALL_TZ?: string; // IANA tz for rotation changeover; default Australia/Melbourne
+  ONCALL_ROTATION_DAYS?: string; // shift length in days; default 7 (weekly)
+  ONCALL_ACK_TIMEOUT_MIN?: string; // minutes before escalating a level; default 10
+  ONCALL_MANAGER?: string; // Slack user id — level-1 backstop mention
+  ONCALL_FALLBACK_CHANNEL?: string; // Slack channel id if nobody is on call
+  ONCALL_ALERT_SECRET?: string; // HMAC secret for POST /api/alerts
+  ONCALL_TWILIO_ACCOUNT_SID?: string; // unset = Twilio notifier disabled
+  ONCALL_TWILIO_AUTH_TOKEN?: string; // also validates inbound Twilio webhooks
+  ONCALL_TWILIO_FROM?: string; // Twilio sending number (E.164)
+  ONCALL_CHANNEL_POLICY?: string; // optional override of the L0/L1/L2 channel policy
 }

@@ -6,6 +6,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
+  // Scheduled work (see src/oncall/cron.ts). Daily shift-generation tops up the
+  // rotation ~4 weeks ahead. The ~1-min escalation sweep is added in on-call slice 3.
+  // NOTE: named envs do NOT inherit top-level triggers — repeated in each below.
+  "triggers": { "crons": ["0 0 * * *"] },
+
   // Per-incident state + timers. One Durable Object instance == one incident.
   "durable_objects": {
     "bindings": [
@@ -47,6 +52,7 @@
   "env": {
     "test": {
       "name": "incident-management-test",
+      "triggers": { "crons": ["0 0 * * *"] },
       "durable_objects": {
         "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
       },
@@ -68,6 +74,7 @@
     },
     "production": {
       "name": "incident-management",
+      "triggers": { "crons": ["0 0 * * *"] },
       "durable_objects": {
         "bindings": [{ "name": "INCIDENT", "class_name": "Incident" }]
       },

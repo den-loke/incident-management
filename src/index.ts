@@ -26,6 +26,7 @@ import { D1Db } from "./status/d1";
 import { PostmortemStore } from "./postmortem/store";
 import { generatePostmortemDraft } from "./postmortem/service";
 import { buildReport, periodWindow, reportToCsv } from "./reporting/service";
+import { runOncallScheduled } from "./oncall/cron";
 
 export { Incident } from "./incident";
 
@@ -326,5 +327,13 @@ export default {
     }
 
     return json({ error: "not_found" }, 404);
+  },
+
+  async scheduled(
+    event: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(runOncallScheduled(event, env));
   },
 } satisfies ExportedHandler<Env>;
