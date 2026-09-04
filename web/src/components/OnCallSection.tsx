@@ -8,6 +8,7 @@ import { Input, Select } from "@/components/ui/form";
 import * as api from "@/lib/api";
 import type { OncallSection, OncallOpenAlert, OncallEscalationPath, OncallEscalationEvent } from "@/types";
 import { RosterEditor } from "@/components/RosterEditor";
+import { uname } from "@/lib/utils";
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -26,7 +27,7 @@ function AlertStatusBadge({ status }: { status: OncallOpenAlert["status"] }) {
   return <Badge variant={status === "firing" ? "default" : "outline"}>{label}</Badge>;
 }
 
-function AlertRow({ alert, onChange }: { alert: OncallOpenAlert; onChange: () => void }) {
+function AlertRow({ alert, onChange, names }: { alert: OncallOpenAlert; onChange: () => void; names?: Record<string, string> }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -74,7 +75,7 @@ function AlertRow({ alert, onChange }: { alert: OncallOpenAlert; onChange: () =>
           {alert.trail.map((t, i) => (
             <li key={i}>
               L{t.level} · {t.channel} · {fmt(t.fired_at)}
-              {t.acked_at ? ` · acked by ${t.acked_by ?? "someone"}` : " · unacked"}
+              {t.acked_at ? ` · acked by ${t.acked_by ? uname(t.acked_by, names) : "someone"}` : " · unacked"}
             </li>
           ))}
         </ol>
@@ -194,7 +195,7 @@ function EscalationPathDiagram({ path }: { path: OncallEscalationPath }) {
   );
 }
 
-function EscalationsLog({ events }: { events: OncallEscalationEvent[] }) {
+function EscalationsLog({ events, names }: { events: OncallEscalationEvent[]; names?: Record<string, string> }) {
   return (
     <div className="mb-3">
       <h3 className="mb-1 text-xs text-muted-foreground">Escalations</h3>
@@ -211,7 +212,7 @@ function EscalationsLog({ events }: { events: OncallEscalationEvent[] }) {
                     <span className="truncate">{e.alert_title}</span>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       L{e.level} · {e.channel} · {fmt(e.fired_at)}
-                      {e.acked_at ? ` · acked by ${e.acked_by ?? "someone"}` : " · unacked"}
+                      {e.acked_at ? ` · acked by ${e.acked_by ? uname(e.acked_by, names) : "someone"}` : " · unacked"}
                       {e.incident_id ? " · incident linked" : ""}
                     </div>
                   </div>
@@ -307,7 +308,7 @@ export function OnCallSection() {
             section.open_alerts.map((a, i) => (
               <div key={a.id}>
                 {i > 0 && <Separator />}
-                <AlertRow alert={a} onChange={load} />
+                <AlertRow alert={a} onChange={load} names={section.user_names} />
               </div>
             ))
           )}
@@ -315,7 +316,7 @@ export function OnCallSection() {
       </Card>
 
       <div className="mt-3">
-        <EscalationsLog events={section.escalation_events} />
+        <EscalationsLog events={section.escalation_events} names={section.user_names} />
         <EscalationPathDiagram path={section.path} />
       </div>
     </section>
