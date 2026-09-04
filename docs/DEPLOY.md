@@ -60,6 +60,24 @@ npx wrangler d1 migrations apply incident-management-test --remote
 - Note the **Client ID**, **Client Secret**, **Signing Secret**, **Bot token**
   (`xoxb-…`), and the workspace **Team ID** (`T…`).
 
+#### Linked response teams (optional)
+
+The **Teams** page and the stakeholder auto-invite read Slack **user groups**, so
+the bot needs the **`usergroups:read`** scope (Slack app → *OAuth & Permissions* →
+*Bot Token Scopes*). Adding a scope forces a **reinstall** (which re-mints the
+`xoxb-` bot token — reset the `SLACK_BOT_TOKEN` secret afterward). Without the
+scope, `usergroups.users.list` fails and each linked team resolves to an **empty
+roster** (never an error).
+
+Then set the usergroup ids as `vars` (they're config, not secrets) for the env —
+find an id via Slack's `usergroups.list` (each entry has an `id` like `S0…`):
+
+- `TEAM_ENGINEERING_USERGROUP` — the Engineering response group
+- `TEAM_SUPPORT_USERGROUP` — the Customer Support response group
+- `TEAM_STAKEHOLDERS_USERGROUP` — the Stakeholders group; its members are
+  **auto-invited to every new incident channel** (unioned with the Home-tab
+  opt-in list). Unset = only the Home-tab opt-ins are invited.
+
 ### 4. Set secrets for that environment
 
 **Non-secret config lives in `wrangler.jsonc` `vars`** (committed, per-env — named
