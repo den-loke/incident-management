@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ComponentBadge, IncidentBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { overallLine, fmt } from "@/components/incidentUi";
 import { Link } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,43 @@ export function StatusPageView({ data }: { data: StatusResponse }) {
           </Card>
         )}
       </section>
+
+      <MaintenanceSummary windows={data.maintenance} />
     </div>
+  );
+}
+
+function MaintenanceSummary({ windows }: { windows: StatusResponse["maintenance"] }) {
+  // Surface planned + ongoing maintenance on the status page (read-only; manage
+  // on the Maintenance page). Completed/cancelled windows are hidden here.
+  const upcoming = windows.filter((w) => w.status === "scheduled" || w.status === "active");
+  if (upcoming.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Scheduled maintenance
+      </h2>
+      <Card>
+        <CardContent className="p-0">
+          {upcoming.map((w, i) => (
+            <div key={w.id}>
+              {i > 0 && <Separator />}
+              <div className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <span className="font-medium">{w.title}</span>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {fmt(w.starts_at)} → {fmt(w.ends_at)}
+                    {w.components.length ? ` · ${w.components.length} component${w.components.length === 1 ? "" : "s"}` : ""}
+                  </div>
+                </div>
+                <Badge variant={w.status === "active" ? "default" : "outline"}>
+                  {w.status === "active" ? "In progress" : "Scheduled"}
+                </Badge>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </section>
   );
 }

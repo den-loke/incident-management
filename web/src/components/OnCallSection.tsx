@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/form";
 import * as api from "@/lib/api";
 import type { OncallSection, OncallOpenAlert, OncallEscalationPath, OncallEscalationEvent } from "@/types";
+import { RosterEditor } from "@/components/RosterEditor";
 
 function fmt(iso: string): string {
   const d = new Date(iso);
@@ -272,6 +273,8 @@ export function OnCallSection() {
           <span className="text-muted-foreground">Support is always-on — no rotation.</span>
         </CardContent>
       </Card>
+
+      <RosterEditor responders={section.responders} names={section.user_names} onChange={load} />
 
       {section.upcoming.length > 0 && (
         <Card className="mb-3">
