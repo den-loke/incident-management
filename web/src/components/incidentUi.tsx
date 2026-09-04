@@ -7,7 +7,7 @@ import { PostmortemSection } from "@/components/PostmortemSection";
 import { PostIncidentFlowSection } from "@/components/PostIncidentFlowSection";
 import type { Component, Incident } from "@/types";
 import { ROLE_LABEL, SEVERITY_LABEL, ROUTING_PATH_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
-import { uname } from "@/lib/utils";
+import { uname, renderMentions } from "@/lib/utils";
 
 const ROLE_ORDER: IncidentRole[] = ["engineering_lead", "customer_support_lead"];
 
@@ -106,7 +106,7 @@ export function IncidentCard({
                     <IncidentBadge status={u.status} />
                     <time className="text-xs text-muted-foreground">{fmt(u.created_at)}</time>
                   </div>
-                  <p className="text-sm">{u.body}</p>
+                  <p className="text-sm">{renderMentions(u.body, names)}</p>
                 </li>
               ))}
             </ol>
