@@ -272,6 +272,7 @@ export function fetchHistory(filters: { severity?: string; routing_path?: string
 export interface TeamsResponse {
   teams: import("@/types").Team[];
   stakeholder_optins: string[];
+  user_names?: Record<string, string>;
 }
 export function fetchTeams(): Promise<TeamsResponse> {
   return fetch(`/api/teams`, { credentials: "same-origin", headers: { accept: "application/json" } }).then((r) => {

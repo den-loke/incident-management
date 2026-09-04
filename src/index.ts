@@ -36,6 +36,7 @@ import { ingestAlert } from "./oncall/alerts";
 import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } from "./oncall/zendesk";
 import { resolveTeams } from "./teams/service";
 import { StakeholderStore } from "./stakeholders/store";
+import { resolveNames } from "./slack/directory";
 import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
@@ -57,6 +58,24 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+/** Scan any JSON-serializable value for Slack user ids (U…/W…) so we can resolve
+ * them to display names in one batch. Matches Slack's id shape on string values. */
+function collectUserIds(payload: unknown): string[] {
+  const ids = new Set<string>();
+  const re = /^[UW][A-Z0-9]{6,}$/;
+  const walk = (v: unknown): void => {
+    if (typeof v === "string") {
+      if (re.test(v)) ids.add(v);
+    } else if (Array.isArray(v)) {
+      for (const x of v) walk(x);
+    } else if (v && typeof v === "object") {
+      for (const x of Object.values(v)) walk(x);
+    }
+  };
+  walk(payload);
+  return [...ids];
 }
 
 /** Parse a JSON request body, tolerating empty/invalid bodies. */
@@ -198,7 +217,8 @@ export default {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
       const data = await loadStatus(env, session);
-      return json(data);
+      const user_names = await resolveNames(env, collectUserIds(data));
+      return json({ ...data, user_names });
     }
 
     // --- On-call alert ingestion (public, HMAC-verified). See docs/SPEC_ONCALL.md §4.
@@ -270,7 +290,9 @@ export default {
     if (request.method === "GET" && url.pathname === "/api/oncall") {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);
-      return json(await buildOncallSection(env));
+      const section = await buildOncallSection(env);
+      const user_names = await resolveNames(env, collectUserIds(section));
+      return json({ ...section, user_names });
     }
 
     // --- Response teams (linked Slack user groups), session-gated. Read-only —
@@ -283,7 +305,9 @@ export default {
       // Stakeholders usergroup; surface both so the web Teams page lists who
       // actually gets invited to new incident channels.
       const stakeholder_optins = await new StakeholderStore(new D1Db(env.DB)).list();
-      return json({ teams, stakeholder_optins });
+      const teamIds = teams.flatMap((t) => t.members);
+      const user_names = await resolveNames(env, [...teamIds, ...stakeholder_optins]);
+      return json({ teams, stakeholder_optins, user_names });
     }
 
     // --- MCP connector (analytics-first, read-only). MCP-over-HTTP: a client
