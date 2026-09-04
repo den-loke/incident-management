@@ -34,10 +34,12 @@ export function __setDirectoryFetch(f: ((env: Env) => Promise<Record<string, str
 }
 
 function pickName(m: SlackMember): string {
+  // Prefer the full real name over the short display-name alias (e.g. "Den
+  // Delimarsky" rather than "den"). Fall back through the remaining fields.
   return (
-    m.profile?.display_name?.trim() ||
     m.profile?.real_name?.trim() ||
     m.real_name?.trim() ||
+    m.profile?.display_name?.trim() ||
     m.name?.trim() ||
     m.id
   );
