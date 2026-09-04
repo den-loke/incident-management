@@ -109,11 +109,15 @@ export function RosterEditor({
         >
           Add responder
         </Button>
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => run(() => api.syncRosterFromEngineering())}>
+          Sync from Engineering group
+        </Button>
         {responders.length === 1 && <Badge variant="outline">min 1 — can’t remove the last</Badge>}
       </div>
       {err && <p className="mt-1 text-xs text-muted-foreground">Error: {err}</p>}
       <p className="mt-1 text-xs text-muted-foreground">
         Order = rotation order (weekly changeover). Name is pulled from Slack. Support is always-on — no rotation.
+        “Sync from Engineering group” imports members of the linked Slack usergroup as responders.
       </p>
     </div>
   );

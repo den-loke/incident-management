@@ -41,7 +41,7 @@ import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
-import { addResponder, updateResponder, removeResponder, reorderResponders } from "./oncall/roster";
+import { addResponder, updateResponder, removeResponder, reorderResponders, syncRosterFromEngineering } from "./oncall/roster";
 import {
   scheduleMaintenance,
   listMaintenance,
@@ -354,6 +354,12 @@ export default {
 
     // --- On-call roster (engineering) management, session-gated. Rotation order
     // = responders' sort_order; changes regenerate future base shifts. ---
+    if (request.method === "POST" && url.pathname === "/api/oncall/responders/sync") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const res = await syncRosterFromEngineering(env);
+      return res.reason ? json(res, 400) : json(res);
+    }
     if (request.method === "POST" && url.pathname === "/api/oncall/responders") {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);

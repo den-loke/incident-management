@@ -234,6 +234,9 @@ export function removeResponder(id: string): Promise<void> {
 export function reorderResponders(ids: string[]): Promise<void> {
   return postJson("/api/oncall/responders/reorder", { ids });
 }
+export function syncRosterFromEngineering(): Promise<void> {
+  return postJson("/api/oncall/responders/sync", {});
+}
 
 export function promoteAlert(alertId: string): Promise<void> {
   return postJson(`/api/oncall/alerts/${encodeURIComponent(alertId)}/promote`, {});
