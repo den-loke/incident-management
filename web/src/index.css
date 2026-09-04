@@ -2,55 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ShadCN "neutral" base — monochrome chrome + restrained semantic status hues. */
+/* ShadCN theme — indigo accent chrome + semantic status hues (green/amber/red). */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    /* App surface (behind cards) is a hair off-white so cards lift off it. */
-    --surface: 0 0% 98.4%;
+    --foreground: 240 10% 12%;
+    /* App surface (behind cards): a faint indigo-tinted off-white so cards lift. */
+    --surface: 240 30% 98%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --border: 0 0% 92%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --card-foreground: 240 10% 12%;
+    /* Primary = indigo (buttons, active accents). */
+    --primary: 245 58% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 20% 96%;
+    --secondary-foreground: 245 40% 30%;
+    --muted: 240 20% 96%;
+    --muted-foreground: 240 6% 45%;
+    /* Accent = soft violet tint for hovers/highlights. */
+    --accent: 245 60% 96%;
+    --accent-foreground: 245 45% 34%;
+    --border: 240 20% 90%;
+    --input: 240 20% 88%;
+    --ring: 245 58% 51%;
     --radius: 0.625rem;
-    /* Semantic status (used for status dots/accents only; chrome stays mono). */
-    --ok: 142 45% 40%;
-    --warn: 38 80% 45%;
-    --bad: 0 60% 48%;
-    --info: 220 55% 50%;
+    /* Semantic status (dots/accents; unchanged intent). */
+    --ok: 142 55% 40%;
+    --warn: 35 92% 45%;
+    --bad: 0 72% 51%;
+    --info: 220 70% 52%;
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --surface: 0 0% 6.5%;
-    --card: 0 0% 5.5%;
-    --card-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --border: 0 0% 16%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --ok: 142 40% 55%;
-    --warn: 38 75% 60%;
-    --bad: 0 60% 62%;
-    --info: 220 60% 68%;
+    --background: 240 10% 6%;
+    --foreground: 240 10% 96%;
+    --surface: 240 12% 8%;
+    --card: 240 10% 10%;
+    --card-foreground: 240 10% 96%;
+    --primary: 245 70% 68%;
+    --primary-foreground: 240 30% 10%;
+    --secondary: 240 8% 16%;
+    --secondary-foreground: 240 10% 96%;
+    --muted: 240 8% 16%;
+    --muted-foreground: 240 6% 64%;
+    --accent: 245 30% 20%;
+    --accent-foreground: 245 70% 88%;
+    --border: 240 8% 18%;
+    --input: 240 8% 18%;
+    --ring: 245 70% 68%;
+    --ok: 142 45% 58%;
+    --warn: 35 85% 62%;
+    --bad: 0 70% 65%;
+    --info: 220 70% 70%;
   }
 }
 
