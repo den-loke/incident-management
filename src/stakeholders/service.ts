@@ -198,31 +198,62 @@ export function homeBlocks(
   return blocks;
 }
 
+/**
+ * Is this user a stakeholder? Prefers the linked Stakeholders usergroup when
+ * configured (membership lives in Slack), else the local opt-in list.
+ */
+async function isStakeholderNow(env: Env, userId: string): Promise<boolean> {
+  const { stakeholdersUsergroupId, isTeamMember } = await import("../teams/service");
+  if (stakeholdersUsergroupId(env)) {
+    try {
+      return await isTeamMember(env, "stakeholders", userId);
+    } catch {
+      /* fall through to the local list */
+    }
+  }
+  return new StakeholderStore(new D1Db(env.DB)).isSubscribed(userId);
+}
+
 /** Render and publish a user's Home tab. Called on `app_home_opened`. */
 export async function publishHomeView(env: Env, userId: string): Promise<void> {
   const db = new D1Db(env.DB);
   const [incidents, isStakeholder] = await Promise.all([
     recentIncidents(db),
-    new StakeholderStore(db).isSubscribed(userId),
+    isStakeholderNow(env, userId),
   ]);
   const blocks = homeBlocks(incidents, isStakeholder, env.APP_BASE_URL);
   await buildSlack(env).viewsPublish(userId, blocks);
 }
 
-/** Flip the caller's stakeholder subscription, then re-publish their Home tab. */
+/**
+ * Flip the caller's stakeholder subscription, then re-publish their Home tab.
+ * When a Stakeholders usergroup is configured (usergroups:write), the button
+ * manages the Slack GROUP directly — the group is the single source of truth.
+ * Otherwise it falls back to the local opt-in list. A remove that Slack can't
+ * apply (would empty the group) falls back to the local list too.
+ */
 export async function toggleStakeholder(
   env: Env,
   userId: string,
   turnOn: boolean,
 ): Promise<void> {
-  const store = new StakeholderStore(new D1Db(env.DB));
-  if (turnOn) {
-    await store.subscribe(userId);
-  } else {
-    await store.unsubscribe(userId);
+  const { setStakeholderMembership, stakeholdersUsergroupId } = await import("../teams/service");
+  let handledByGroup = false;
+  if (stakeholdersUsergroupId(env)) {
+    try {
+      handledByGroup = await setStakeholderMembership(env, userId, turnOn);
+      // If turning ON and the group already had them, that's still "handled".
+      if (!handledByGroup && turnOn) handledByGroup = true;
+    } catch {
+      /* fall back to the local list below */
+    }
   }
-  // Reflect the new state back in the Home tab. Best-effort — the subscription
-  // (source of truth) already persisted above.
+  if (!handledByGroup) {
+    const store = new StakeholderStore(new D1Db(env.DB));
+    if (turnOn) await store.subscribe(userId);
+    else await store.unsubscribe(userId);
+  }
+  // Reflect the new state back in the Home tab. Best-effort.
   try {
     await publishHomeView(env, userId);
   } catch {

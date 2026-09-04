@@ -14,7 +14,12 @@ const SECRET = "e2e-signing-secret";
 const TEAM = "T_E2E";
 
 function fakeClient(map: Record<string, string[]>): UsergroupClient {
-  return { listUsers: async (id) => map[id] ?? [] };
+  return {
+    listUsers: async (id) => map[id] ?? [],
+    setUsers: async (id, users) => {
+      map[id] = users;
+    },
+  };
 }
 function baseEnv(overrides: Partial<Env> = {}): Env {
   return { ...(env as unknown as Env), ...overrides };
@@ -34,7 +39,7 @@ describe("linked Slack-group teams (service)", () => {
 
   it("an unconfigured team resolves to an empty roster, configured:false, no lookup", async () => {
     let called = false;
-    __setUsergroupClient({ listUsers: async () => { called = true; return []; } });
+    __setUsergroupClient({ listUsers: async () => { called = true; return []; }, setUsers: async () => {} });
     const t = await resolveTeam(baseEnv({ TEAM_SUPPORT_USERGROUP: undefined }), "support");
     expect(t.configured).toBe(false);
     expect(t.members).toEqual([]);
@@ -42,10 +47,37 @@ describe("linked Slack-group teams (service)", () => {
   });
 
   it("swallows a Slack lookup failure to an empty roster (best-effort)", async () => {
-    __setUsergroupClient({ listUsers: async () => { throw new Error("slack usergroups.users.list failed: fatal"); } });
+    __setUsergroupClient({ listUsers: async () => { throw new Error("slack usergroups.users.list failed: fatal"); }, setUsers: async () => {} });
     const t = await resolveTeam(baseEnv({ TEAM_ENGINEERING_USERGROUP: "S_ENG" }), "engineering");
     expect(t.configured).toBe(true);
     expect(t.members).toEqual([]); // failure → empty, not thrown
+  });
+
+  it("setStakeholderMembership adds/removes on the group, no-ops, and guards empty", async () => {
+    const { setStakeholderMembership, stakeholdersUsergroupId } = await import("../src/teams/service");
+    const map: Record<string, string[]> = { S_STK: ["U1", "U2"] };
+    __setUsergroupClient({ listUsers: async (id) => map[id] ?? [], setUsers: async (id, u) => { map[id] = u; } });
+    const e = baseEnv({ TEAM_STAKEHOLDERS_USERGROUP: "S_STK" });
+    expect(stakeholdersUsergroupId(e)).toBe("S_STK");
+
+    // add a new member
+    expect(await setStakeholderMembership(e, "U3", true)).toBe(true);
+    expect(map.S_STK.sort()).toEqual(["U1", "U2", "U3"]);
+    // adding an existing member is a no-op
+    expect(await setStakeholderMembership(e, "U1", true)).toBe(false);
+    // remove a member
+    expect(await setStakeholderMembership(e, "U3", false)).toBe(true);
+    expect(map.S_STK.sort()).toEqual(["U1", "U2"]);
+    // removing down to empty is refused (Slack can't store an empty group)
+    map.S_STK = ["U1"];
+    expect(await setStakeholderMembership(e, "U1", false)).toBe(false);
+    expect(map.S_STK).toEqual(["U1"]); // unchanged
+  });
+
+  it("setStakeholderMembership is a no-op when the group is unconfigured", async () => {
+    const { setStakeholderMembership } = await import("../src/teams/service");
+    __setUsergroupClient({ listUsers: async () => [], setUsers: async () => {} });
+    expect(await setStakeholderMembership(baseEnv({ TEAM_STAKEHOLDERS_USERGROUP: undefined }), "U1", true)).toBe(false);
   });
 
   it("resolveTeams returns all three fixed teams; isTeamMember checks membership", async () => {

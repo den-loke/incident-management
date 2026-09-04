@@ -60,6 +60,28 @@ npx wrangler d1 migrations apply incident-management-test --remote
 - Note the **Client ID**, **Client Secret**, **Signing Secret**, **Bot token**
   (`xoxb-…`), and the workspace **Team ID** (`T…`).
 
+#### Linked response teams (optional)
+
+The **Teams** page and the stakeholder auto-invite read Slack **user groups**, so
+the bot needs the **`usergroups:read`** scope (Slack app → *OAuth & Permissions* →
+*Bot Token Scopes*). To let the **Home-tab stakeholder button manage the
+Stakeholders group directly** (add/remove the clicker), also grant
+**`usergroups:write`**. Adding a scope forces a **reinstall** (which re-mints the
+`xoxb-` bot token — reset the `SLACK_BOT_TOKEN` secret afterward). Without
+`usergroups:read`, a linked team resolves to an **empty roster** (never an error);
+without `usergroups:write`, the Home-tab button falls back to a local opt-in list.
+
+Then set the usergroup ids as `vars` (they're config, not secrets) for the env —
+find an id via Slack's `usergroups.list` (each entry has an `id` like `S0…`):
+
+- `TEAM_ENGINEERING_USERGROUP` — the Engineering response group
+- `TEAM_SUPPORT_USERGROUP` — the Customer Support response group
+- `TEAM_STAKEHOLDERS_USERGROUP` — the Stakeholders group; its members are
+  **auto-invited to every new incident channel**. When set (and `usergroups:write`
+  is granted), the Home-tab "stakeholder" button **adds/removes the clicker from
+  this group** — the Slack group is the single source of truth. Unset = the button
+  uses a local opt-in list instead.
+
 ### 4. Set secrets for that environment
 
 **Non-secret config lives in `wrangler.jsonc` `vars`** (committed, per-env — named

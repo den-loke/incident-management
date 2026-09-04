@@ -65,7 +65,8 @@
         "ONCALL_ROTATION_DAYS": "7",
         "ONCALL_ACK_TIMEOUT_MIN": "10",
         "TEAM_ENGINEERING_USERGROUP": "S0BUWT6C8G2",
-        "TEAM_SUPPORT_USERGROUP": "S0BUYREJH41"
+        "TEAM_SUPPORT_USERGROUP": "S0BUYREJH41",
+        "TEAM_STAKEHOLDERS_USERGROUP": "S0BUSJBFLE9"
       },
       "durable_objects": {
         "bindings": [
