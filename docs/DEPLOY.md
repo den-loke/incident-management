@@ -66,8 +66,12 @@ The **Teams** page and the stakeholder auto-invite read Slack **user groups**, s
 the bot needs the **`usergroups:read`** scope (Slack app → *OAuth & Permissions* →
 *Bot Token Scopes*). To let the **Home-tab stakeholder button manage the
 Stakeholders group directly** (add/remove the clicker), also grant
-**`usergroups:write`**. Adding a scope forces a **reinstall** (which re-mints the
-`xoxb-` bot token — reset the `SLACK_BOT_TOKEN` secret afterward). Without
+**`usergroups:write`**. To render user @mentions as **names** in the web UI (Teams
+page, incident roles, on-call) rather than raw `U…` ids, also grant **`users:read`**
+(the web app resolves ids via `users.list`, cached durably in the `slack_users`
+table so a departed user still resolves on historical incidents). Adding a scope
+forces a **reinstall** (which re-mints the `xoxb-` bot token — reset the
+`SLACK_BOT_TOKEN` secret afterward). Without
 `usergroups:read`, a linked team resolves to an **empty roster** (never an error);
 without `usergroups:write`, the Home-tab button falls back to a local opt-in list.
 

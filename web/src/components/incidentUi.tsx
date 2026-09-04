@@ -7,6 +7,7 @@ import { PostmortemSection } from "@/components/PostmortemSection";
 import { PostIncidentFlowSection } from "@/components/PostIncidentFlowSection";
 import type { Component, Incident } from "@/types";
 import { ROLE_LABEL, SEVERITY_LABEL, ROUTING_PATH_LABEL, type IncidentRole, type RoleAssignment } from "@/types";
+import { uname } from "@/lib/utils";
 
 const ROLE_ORDER: IncidentRole[] = ["engineering_lead", "customer_support_lead"];
 
@@ -33,7 +34,7 @@ export function overallLine(components: Component[], hasActive: boolean): string
   return worst === "operational" ? "All systems operational" : "Degraded service";
 }
 
-export function RolesLine({ roles }: { roles: RoleAssignment[] }) {
+export function RolesLine({ roles, names }: { roles: RoleAssignment[]; names?: Record<string, string> }) {
   const byRole = new Map(roles.map((r) => [r.role, r.slack_user_id]));
   return (
     <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -41,7 +42,7 @@ export function RolesLine({ roles }: { roles: RoleAssignment[] }) {
         <span key={role}>
           {ROLE_LABEL[role]}:{" "}
           <span className="text-foreground">
-            {byRole.has(role) ? `@${byRole.get(role)}` : "unassigned"}
+            {byRole.has(role) ? uname(byRole.get(role)!, names) : "unassigned"}
           </span>
         </span>
       ))}
@@ -58,10 +59,12 @@ export function IncidentCard({
   incident,
   onChange,
   compact = false,
+  names,
 }: {
   incident: Incident;
   onChange: () => void;
   compact?: boolean;
+  names?: Record<string, string>;
 }) {
   const active = incident.status !== "resolved";
   return (
@@ -92,7 +95,7 @@ export function IncidentCard({
       </CardHeader>
       {!compact && (
         <CardContent>
-          <RolesLine roles={incident.roles} />
+          <RolesLine roles={incident.roles} names={names} />
           {incident.updates.length === 0 ? (
             <p className="text-sm text-muted-foreground">No updates yet.</p>
           ) : (

@@ -18,7 +18,7 @@ export function IncidentDetailPage({
         ← All incidents
       </Link>
       {incident ? (
-        <IncidentCard incident={incident} onChange={onChange} />
+        <IncidentCard incident={incident} onChange={onChange} names={data.user_names} />
       ) : (
         <p className="text-sm text-muted-foreground">
           Incident not found. It may have been removed, or the link is stale.

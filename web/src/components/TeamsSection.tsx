@@ -4,8 +4,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import * as api from "@/lib/api";
 import type { Team } from "@/types";
+import { uname } from "@/lib/utils";
 
-function TeamRow({ t }: { t: Team }) {
+function TeamRow({ t, names }: { t: Team; names?: Record<string, string> }) {
   return (
     <div className="px-4 py-3 text-sm">
       <div className="flex items-center gap-2">
@@ -19,7 +20,7 @@ function TeamRow({ t }: { t: Team }) {
       <p className="mt-0.5 text-xs text-muted-foreground">
         {t.configured
           ? t.members.length > 0
-            ? t.members.map((m) => `@${m}`).join(", ")
+            ? t.members.map((m) => uname(m, names)).join(", ")
             : "Linked, but the group has no members (or membership couldn’t be read)."
           : "Link a Slack user group in config to populate this team."}
       </p>
@@ -30,6 +31,7 @@ function TeamRow({ t }: { t: Team }) {
 export function TeamsSection() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [optins, setOptins] = useState<string[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -39,6 +41,7 @@ export function TeamsSection() {
       .then((r) => {
         setTeams(r.teams);
         setOptins(r.stakeholder_optins);
+        setNames(r.user_names ?? {});
       })
       .catch((e) => setErr(String((e as Error).message)))
       .finally(() => setLoaded(true));
@@ -58,7 +61,7 @@ export function TeamsSection() {
             {teams.map((t, i) => (
               <div key={t.key}>
                 {i > 0 && <Separator />}
-                <TeamRow t={t} />
+                <TeamRow t={t} names={names} />
               </div>
             ))}
           </CardContent>
@@ -77,7 +80,7 @@ export function TeamsSection() {
             </div>
             <p className="text-xs text-muted-foreground">
               {optins.length > 0
-                ? optins.map((u) => `@${u}`).join(", ")
+                ? optins.map((u) => uname(u, names)).join(", ")
                 : "No one has opted in yet. Anyone can opt in from the app’s Slack Home tab."}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">

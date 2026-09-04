@@ -94,6 +94,8 @@ export interface StatusResponse {
   components: Component[];
   incidents: Incident[];
   maintenance: MaintenanceWindow[];
+  /** Slack user id → display name, for rendering @mentions as names. */
+  user_names?: Record<string, string>;
 }
 
 export type MaintenanceStatus = "scheduled" | "active" | "completed" | "cancelled";
@@ -246,4 +248,5 @@ export interface OncallSection {
   open_alerts: OncallOpenAlert[];
   path: OncallEscalationPath;
   escalation_events: OncallEscalationEvent[];
+  user_names?: Record<string, string>;
 }
