@@ -2,11 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ShadCN "neutral" base — pure monochrome. No accent hue. */
+/* ShadCN "neutral" base — monochrome chrome + restrained semantic status hues. */
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
+    /* App surface (behind cards) is a hair off-white so cards lift off it. */
+    --surface: 0 0% 98.4%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
     --primary: 0 0% 9%;
@@ -17,16 +19,22 @@
     --muted-foreground: 0 0% 45.1%;
     --accent: 0 0% 96.1%;
     --accent-foreground: 0 0% 9%;
-    --border: 0 0% 89.8%;
+    --border: 0 0% 92%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
+    --radius: 0.625rem;
+    /* Semantic status (used for status dots/accents only; chrome stays mono). */
+    --ok: 142 45% 40%;
+    --warn: 38 80% 45%;
+    --bad: 0 60% 48%;
+    --info: 220 55% 50%;
   }
 
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --surface: 0 0% 6.5%;
+    --card: 0 0% 5.5%;
     --card-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 0 0% 9%;
@@ -36,9 +44,13 @@
     --muted-foreground: 0 0% 63.9%;
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
+    --border: 0 0% 16%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --ok: 142 40% 55%;
+    --warn: 38 75% 60%;
+    --bad: 0 60% 62%;
+    --info: 220 60% 68%;
   }
 }
 
@@ -47,7 +59,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-surface text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

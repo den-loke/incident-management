@@ -7,30 +7,46 @@ import {
 } from "@/types";
 import { cn } from "@/lib/utils";
 
-// Monochrome: severity is shown by fill, not hue. Operational/resolved = outline
-// (quiet); anything active = solid (loud). A leading dot reinforces it.
+// Chrome stays monochrome; the STATUS DOT carries a restrained semantic hue so
+// health is scannable at a glance (green ok · amber degraded · red outage · grey neutral).
+const COMPONENT_DOT: Record<ComponentStatus, string> = {
+  operational: "bg-ok",
+  under_maintenance: "bg-info",
+  degraded_performance: "bg-warn",
+  partial_outage: "bg-warn",
+  major_outage: "bg-bad",
+};
+
+const INCIDENT_DOT: Record<IncidentStatus, string> = {
+  investigating: "bg-bad",
+  identified: "bg-warn",
+  monitoring: "bg-info",
+  resolved: "bg-ok",
+};
+
 function isQuiet(status: ComponentStatus | IncidentStatus): boolean {
   return status === "operational" || status === "resolved";
 }
 
 export function ComponentBadge({ status }: { status: ComponentStatus }) {
-  const quiet = isQuiet(status);
   return (
-    <Badge variant={quiet ? "outline" : "default"} className="gap-1.5">
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          quiet ? "bg-muted-foreground" : "bg-primary-foreground",
-        )}
-      />
+    <Badge variant="outline" className="gap-1.5 font-medium">
+      <span className={cn("h-1.5 w-1.5 rounded-full", COMPONENT_DOT[status])} />
       {COMPONENT_LABEL[status]}
     </Badge>
   );
 }
 
 export function IncidentBadge({ status }: { status: IncidentStatus }) {
-  const quiet = isQuiet(status);
   return (
-    <Badge variant={quiet ? "outline" : "default"}>{INCIDENT_LABEL[status]}</Badge>
+    <Badge variant={isQuiet(status) ? "outline" : "default"} className="gap-1.5">
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          isQuiet(status) ? INCIDENT_DOT[status] : "bg-current opacity-70",
+        )}
+      />
+      {INCIDENT_LABEL[status]}
+    </Badge>
   );
 }

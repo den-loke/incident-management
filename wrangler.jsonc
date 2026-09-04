@@ -63,7 +63,9 @@
         "OPENAI_MODEL": "gpt-5.6-terra",
         "ONCALL_TZ": "Australia/Melbourne",
         "ONCALL_ROTATION_DAYS": "7",
-        "ONCALL_ACK_TIMEOUT_MIN": "10"
+        "ONCALL_ACK_TIMEOUT_MIN": "10",
+        "TEAM_ENGINEERING_USERGROUP": "S0BUWT6C8G2",
+        "TEAM_SUPPORT_USERGROUP": "S0BUYREJH41"
       },
       "durable_objects": {
         "bindings": [
