@@ -50,7 +50,7 @@ export function IncidentsListPage({ data }: { data: StatusResponse }) {
   const resolved = data.incidents.filter((i) => i.status === "resolved");
   return (
     <div className="space-y-8">
-      <h1 className="text-lg font-semibold tracking-tight">Incidents</h1>
+      <h1 className="text-xl font-semibold tracking-tight">Incidents</h1>
       {data.incidents.length === 0 ? (
         <p className="text-sm text-muted-foreground">No incidents recorded.</p>
       ) : (

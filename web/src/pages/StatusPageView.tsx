@@ -10,15 +10,21 @@ import { SEVERITY_LABEL } from "@/types";
 export function StatusPageView({ data }: { data: StatusResponse }) {
   const active = data.incidents.filter((i) => i.status !== "resolved");
   const line = overallLine(data.components, active.length > 0);
+  const healthy = active.length === 0 && data.components.every((c) => c.status === "operational");
 
   return (
     <div className="space-y-8">
-      <h1 className="text-lg font-semibold tracking-tight">Status</h1>
+      <h1 className="text-xl font-semibold tracking-tight">Status</h1>
 
       <Card>
-        <CardContent className="flex items-center gap-3 py-4">
-          <span className={cn("h-2.5 w-2.5 rounded-full", active.length ? "bg-foreground" : "bg-muted-foreground")} />
-          <span className="font-medium">{line}</span>
+        <CardContent className="flex items-center gap-3 py-5">
+          <span className="relative flex h-3 w-3">
+            {!healthy && (
+              <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-60", active.length ? "bg-bad" : "bg-warn")} />
+            )}
+            <span className={cn("relative inline-flex h-3 w-3 rounded-full", healthy ? "bg-ok" : active.length ? "bg-bad" : "bg-warn")} />
+          </span>
+          <span className="text-base font-medium">{line}</span>
         </CardContent>
       </Card>
 

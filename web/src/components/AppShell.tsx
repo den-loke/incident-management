@@ -37,33 +37,42 @@ export function AppShell({
 }) {
   const path = useRoute();
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl">
-      {/* Left nav — no side borders (stance) */}
-      <aside className="hidden w-52 shrink-0 flex-col px-3 py-6 sm:flex">
-        <div className="mb-6 px-2">
+    <div className="mx-auto flex min-h-screen max-w-6xl gap-6 px-4 py-5 sm:px-6">
+      {/* Left nav — sits on the app surface as its own panel; no side borders. */}
+      <aside className="hidden w-56 shrink-0 flex-col sm:flex">
+        <div className="mb-5 flex items-center gap-2 px-2">
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+            !
+          </span>
           <span className="text-sm font-semibold tracking-tight">Incident Mgmt</span>
         </div>
         <nav className="flex flex-col gap-0.5">
-          {NAV.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "rounded-md px-2 py-1.5 text-sm",
-                isActive(path, item.path)
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const active = isActive(path, item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "relative rounded-md px-3 py-1.5 text-sm transition-colors",
+                  active
+                    ? "bg-card font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                )}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                )}
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
       </aside>
 
       {/* Content region */}
-      <div className="min-w-0 flex-1 px-4 py-6 sm:px-8">
-        <header className="mb-6 flex items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-10 -mx-4 mb-6 flex items-center gap-3 bg-surface/80 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0">
           {/* Mobile nav: a compact select fallback under sm */}
           <MobileNav path={path} />
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
@@ -74,7 +83,7 @@ export function AppShell({
             </a>
           </div>
         </header>
-        {children}
+        <main className="pb-16">{children}</main>
       </div>
     </div>
   );
