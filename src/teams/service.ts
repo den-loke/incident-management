@@ -32,14 +32,17 @@ const SLACK_API = "https://slack.com/api";
 
 class WebApiUsergroupClient implements UsergroupClient {
   constructor(private readonly botToken: string) {}
-  private async call<T>(method: string, body: unknown): Promise<T> {
+  // Slack's usergroups.* methods reject a JSON body (→ invalid_arguments); they
+  // require application/x-www-form-urlencoded params. (Unlike chat.postMessage,
+  // which does accept JSON.) So encode args as a form body.
+  private async call<T>(method: string, params: Record<string, string>): Promise<T> {
     const res = await fetch(`${SLACK_API}/${method}`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${this.botToken}`,
-        "content-type": "application/json; charset=utf-8",
+        "content-type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      body: JSON.stringify(body),
+      body: new URLSearchParams(params).toString(),
     });
     const data = (await res.json()) as { ok: boolean; error?: string } & Record<string, unknown>;
     if (!data.ok) throw new Error(`slack ${method} failed: ${data.error}`);
@@ -93,8 +96,9 @@ export async function resolveTeam(env: Env, key: TeamKey): Promise<Team> {
   if (!usergroup_id) return base;
   try {
     base.members = await clientFor(env).listUsers(usergroup_id);
-  } catch {
-    // best-effort: leave members empty on failure
+  } catch (e) {
+    // best-effort: leave members empty on failure, but surface why in logs.
+    console.log(`[teams] listUsers(${usergroup_id}) failed for ${key}: ${String(e)}`);
   }
   return base;
 }

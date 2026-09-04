@@ -203,11 +203,14 @@ export function homeBlocks(
  * configured (membership lives in Slack), else the local opt-in list.
  */
 async function isStakeholderNow(env: Env, userId: string): Promise<boolean> {
-  const { stakeholdersUsergroupId, isTeamMember } = await import("../teams/service");
-  if (stakeholdersUsergroupId(env)) {
+  const { stakeholdersUsergroupId, resolveTeam } = await import("../teams/service");
+  const ug = stakeholdersUsergroupId(env);
+  if (ug) {
     try {
-      return await isTeamMember(env, "stakeholders", userId);
-    } catch {
+      const team = await resolveTeam(env, "stakeholders");
+      return team.members.includes(userId);
+    } catch (e) {
+      console.log(`[stakeholder] group read failed for ${ug}: ${String(e)} — falling back to local list`);
       /* fall through to the local list */
     }
   }
