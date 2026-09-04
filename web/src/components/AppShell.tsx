@@ -56,8 +56,8 @@ export function AppShell({
                 className={cn(
                   "relative rounded-md px-3 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-card font-medium text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+                    ? "bg-accent font-medium text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 )}
               >
                 {active && (
