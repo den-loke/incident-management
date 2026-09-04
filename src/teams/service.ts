@@ -123,27 +123,32 @@ export function stakeholdersUsergroupId(env: Env): string | null {
   return usergroupIdFor(env, "stakeholders");
 }
 
+export type StakeholderWriteOutcome =
+  | "changed" // membership added/removed
+  | "noop" // already in the desired state
+  | "min_one" // removal refused: would empty the group; at least one member must remain
+  | "unconfigured"; // no stakeholders usergroup set
+
 /**
  * Add or remove a user from the Stakeholders Slack usergroup (needs the
  * `usergroups:write` scope). Read-modify-write on the current member list.
- * Returns true if a write happened, false if the group is unconfigured or the
- * change was a no-op. Guards Slack's "can't empty a group" rule: a remove that
- * would leave zero members is refused (returns false) so the caller can fall
- * back to the local opt-in list.
+ * A group must ALWAYS keep at least one member (Slack can't store an empty
+ * usergroup, and policy: every response group stays staffed), so a removal that
+ * would empty it is refused with `min_one` — the caller tells the user why.
  */
 export async function setStakeholderMembership(
   env: Env,
   userId: string,
   member: boolean,
-): Promise<boolean> {
+): Promise<StakeholderWriteOutcome> {
   const usergroup = stakeholdersUsergroupId(env);
-  if (!usergroup) return false;
+  if (!usergroup) return "unconfigured";
   const client = clientFor(env);
   const current = await client.listUsers(usergroup);
   const has = current.includes(userId);
-  if (member === has) return false; // already in the desired state
+  if (member === has) return "noop";
   const next = member ? [...current, userId] : current.filter((u) => u !== userId);
-  if (next.length === 0) return false; // Slack can't store an empty usergroup
+  if (next.length === 0) return "min_one"; // must keep at least one member
   await client.setUsers(usergroup, next);
-  return true;
+  return "changed";
 }

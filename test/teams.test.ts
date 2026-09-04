@@ -61,23 +61,23 @@ describe("linked Slack-group teams (service)", () => {
     expect(stakeholdersUsergroupId(e)).toBe("S_STK");
 
     // add a new member
-    expect(await setStakeholderMembership(e, "U3", true)).toBe(true);
+    expect(await setStakeholderMembership(e, "U3", true)).toBe("changed");
     expect(map.S_STK.sort()).toEqual(["U1", "U2", "U3"]);
     // adding an existing member is a no-op
-    expect(await setStakeholderMembership(e, "U1", true)).toBe(false);
+    expect(await setStakeholderMembership(e, "U1", true)).toBe("noop");
     // remove a member
-    expect(await setStakeholderMembership(e, "U3", false)).toBe(true);
+    expect(await setStakeholderMembership(e, "U3", false)).toBe("changed");
     expect(map.S_STK.sort()).toEqual(["U1", "U2"]);
-    // removing down to empty is refused (Slack can't store an empty group)
+    // removing down to empty is refused — a group must keep at least one member
     map.S_STK = ["U1"];
-    expect(await setStakeholderMembership(e, "U1", false)).toBe(false);
+    expect(await setStakeholderMembership(e, "U1", false)).toBe("min_one");
     expect(map.S_STK).toEqual(["U1"]); // unchanged
   });
 
-  it("setStakeholderMembership is a no-op when the group is unconfigured", async () => {
+  it("setStakeholderMembership is unconfigured when the group is unset", async () => {
     const { setStakeholderMembership } = await import("../src/teams/service");
     __setUsergroupClient({ listUsers: async () => [], setUsers: async () => {} });
-    expect(await setStakeholderMembership(baseEnv({ TEAM_STAKEHOLDERS_USERGROUP: undefined }), "U1", true)).toBe(false);
+    expect(await setStakeholderMembership(baseEnv({ TEAM_STAKEHOLDERS_USERGROUP: undefined }), "U1", true)).toBe("unconfigured");
   });
 
   it("resolveTeams returns all three fixed teams; isTeamMember checks membership", async () => {

@@ -102,17 +102,27 @@ function fmtDate(iso: string): string {
   });
 }
 
-/** Build the App Home Block Kit view for one user. */
+/** Build the App Home Block Kit view for one user. `notice` shows a transient
+ * message (e.g. why an opt-out was refused). */
 export function homeBlocks(
   incidents: RecentIncidentRow[],
   isStakeholder: boolean,
   appBaseUrl?: string,
+  notice?: string,
 ): unknown[] {
   const blocks: unknown[] = [
     {
       type: "header",
       text: { type: "plain_text", text: "🚨 Incident Management", emoji: true },
     },
+  ];
+  if (notice) {
+    blocks.push({
+      type: "context",
+      elements: [{ type: "mrkdwn", text: notice }],
+    });
+  }
+  blocks.push(
     {
       type: "section",
       text: {
@@ -151,7 +161,7 @@ export function homeBlocks(
       type: "header",
       text: { type: "plain_text", text: "Recent incidents", emoji: true },
     },
-  ];
+  );
 
   if (incidents.length === 0) {
     blocks.push({
@@ -217,23 +227,24 @@ async function isStakeholderNow(env: Env, userId: string): Promise<boolean> {
   return new StakeholderStore(new D1Db(env.DB)).isSubscribed(userId);
 }
 
-/** Render and publish a user's Home tab. Called on `app_home_opened`. */
-export async function publishHomeView(env: Env, userId: string): Promise<void> {
+/** Render and publish a user's Home tab. Called on `app_home_opened`. An optional
+ * `notice` surfaces a transient message (e.g. why a toggle was refused). */
+export async function publishHomeView(env: Env, userId: string, notice?: string): Promise<void> {
   const db = new D1Db(env.DB);
   const [incidents, isStakeholder] = await Promise.all([
     recentIncidents(db),
     isStakeholderNow(env, userId),
   ]);
-  const blocks = homeBlocks(incidents, isStakeholder, env.APP_BASE_URL);
+  const blocks = homeBlocks(incidents, isStakeholder, env.APP_BASE_URL, notice);
   await buildSlack(env).viewsPublish(userId, blocks);
 }
 
 /**
  * Flip the caller's stakeholder subscription, then re-publish their Home tab.
  * When a Stakeholders usergroup is configured (usergroups:write), the button
- * manages the Slack GROUP directly — the group is the single source of truth.
- * Otherwise it falls back to the local opt-in list. A remove that Slack can't
- * apply (would empty the group) falls back to the local list too.
+ * manages the Slack GROUP directly — the group is the single source of truth,
+ * and it always keeps at least one member: a lone member's opt-out is refused
+ * and the Home tab explains why. Otherwise it falls back to the local opt-in list.
  */
 export async function toggleStakeholder(
   env: Env,
@@ -241,12 +252,18 @@ export async function toggleStakeholder(
   turnOn: boolean,
 ): Promise<void> {
   const { setStakeholderMembership, stakeholdersUsergroupId } = await import("../teams/service");
+  let notice: string | undefined;
   let handledByGroup = false;
   if (stakeholdersUsergroupId(env)) {
     try {
-      handledByGroup = await setStakeholderMembership(env, userId, turnOn);
-      // If turning ON and the group already had them, that's still "handled".
-      if (!handledByGroup && turnOn) handledByGroup = true;
+      const outcome = await setStakeholderMembership(env, userId, turnOn);
+      if (outcome === "min_one") {
+        notice =
+          "⚠️ You're the only stakeholder — a group must always keep at least one. Add someone else first, then you can opt out.";
+        handledByGroup = true; // group is authoritative; do NOT fall back to the local list
+      } else if (outcome !== "unconfigured") {
+        handledByGroup = true; // changed or noop — the group handled it
+      }
     } catch {
       /* fall back to the local list below */
     }
@@ -258,7 +275,7 @@ export async function toggleStakeholder(
   }
   // Reflect the new state back in the Home tab. Best-effort.
   try {
-    await publishHomeView(env, userId);
+    await publishHomeView(env, userId, notice);
   } catch {
     /* non-fatal */
   }
