@@ -24,24 +24,35 @@ export interface Team {
 export interface UsergroupClient {
   /** Slack usergroups.users.list → member user ids for a usergroup. */
   listUsers(usergroupId: string): Promise<string[]>;
+  /** Slack usergroups.users.update → replace the usergroup's full member list. */
+  setUsers(usergroupId: string, userIds: string[]): Promise<void>;
 }
 
 const SLACK_API = "https://slack.com/api";
 
 class WebApiUsergroupClient implements UsergroupClient {
   constructor(private readonly botToken: string) {}
-  async listUsers(usergroupId: string): Promise<string[]> {
-    const res = await fetch(`${SLACK_API}/usergroups.users.list`, {
+  private async call<T>(method: string, body: unknown): Promise<T> {
+    const res = await fetch(`${SLACK_API}/${method}`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${this.botToken}`,
         "content-type": "application/json; charset=utf-8",
       },
-      body: JSON.stringify({ usergroup: usergroupId }),
+      body: JSON.stringify(body),
     });
-    const data = (await res.json()) as { ok: boolean; error?: string; users?: string[] };
-    if (!data.ok) throw new Error(`slack usergroups.users.list failed: ${data.error}`);
+    const data = (await res.json()) as { ok: boolean; error?: string } & Record<string, unknown>;
+    if (!data.ok) throw new Error(`slack ${method} failed: ${data.error}`);
+    return data as T;
+  }
+  async listUsers(usergroupId: string): Promise<string[]> {
+    const data = await this.call<{ users?: string[] }>("usergroups.users.list", { usergroup: usergroupId });
     return data.users ?? [];
+  }
+  async setUsers(usergroupId: string, userIds: string[]): Promise<void> {
+    // Slack requires a non-empty list; usergroups.users.update can't empty a
+    // group. Callers guard against that (a group with one member stays).
+    await this.call("usergroups.users.update", { usergroup: usergroupId, users: userIds.join(",") });
   }
 }
 
@@ -101,4 +112,34 @@ export async function resolveTeams(env: Env): Promise<Team[]> {
 export async function isTeamMember(env: Env, key: TeamKey, userId: string): Promise<boolean> {
   const team = await resolveTeam(env, key);
   return team.members.includes(userId);
+}
+
+/** The configured Stakeholders usergroup id, or null when unset. */
+export function stakeholdersUsergroupId(env: Env): string | null {
+  return usergroupIdFor(env, "stakeholders");
+}
+
+/**
+ * Add or remove a user from the Stakeholders Slack usergroup (needs the
+ * `usergroups:write` scope). Read-modify-write on the current member list.
+ * Returns true if a write happened, false if the group is unconfigured or the
+ * change was a no-op. Guards Slack's "can't empty a group" rule: a remove that
+ * would leave zero members is refused (returns false) so the caller can fall
+ * back to the local opt-in list.
+ */
+export async function setStakeholderMembership(
+  env: Env,
+  userId: string,
+  member: boolean,
+): Promise<boolean> {
+  const usergroup = stakeholdersUsergroupId(env);
+  if (!usergroup) return false;
+  const client = clientFor(env);
+  const current = await client.listUsers(usergroup);
+  const has = current.includes(userId);
+  if (member === has) return false; // already in the desired state
+  const next = member ? [...current, userId] : current.filter((u) => u !== userId);
+  if (next.length === 0) return false; // Slack can't store an empty usergroup
+  await client.setUsers(usergroup, next);
+  return true;
 }
