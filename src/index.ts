@@ -41,6 +41,7 @@ import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
+import { addResponder, updateResponder, removeResponder, reorderResponders } from "./oncall/roster";
 import {
   scheduleMaintenance,
   listMaintenance,
@@ -349,6 +350,53 @@ export default {
       if (!session) return json({ error: "unauthorized" }, 401);
       const res = await promoteAlertToIncident(env, decodeURIComponent(promoteMatch[1]));
       return res ? json(res) : json({ error: "not_found" }, 404);
+    }
+
+    // --- On-call roster (engineering) management, session-gated. Rotation order
+    // = responders' sort_order; changes regenerate future base shifts. ---
+    if (request.method === "POST" && url.pathname === "/api/oncall/responders") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const id = typeof body?.id === "string" ? body.id.trim() : "";
+      if (!id) return json({ error: "id_required" }, 400);
+      try {
+        const r = await addResponder(env, {
+          id,
+          name: typeof body?.name === "string" ? body.name : undefined,
+          phone: typeof body?.phone === "string" ? body.phone : null,
+        });
+        return json(r, 201);
+      } catch (e) {
+        return json({ error: String((e as Error).message) }, 400);
+      }
+    }
+    if (request.method === "POST" && url.pathname === "/api/oncall/responders/reorder") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const body = await readJson(request);
+      const ids = Array.isArray(body?.ids) ? (body.ids as unknown[]).filter((x): x is string => typeof x === "string") : [];
+      return json({ responders: await reorderResponders(env, ids) });
+    }
+    const responderMatch = url.pathname.match(/^\/api\/oncall\/responders\/([^/]+)$/);
+    if (responderMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const id = decodeURIComponent(responderMatch[1]);
+      if (request.method === "PATCH") {
+        const body = await readJson(request);
+        const r = await updateResponder(env, id, {
+          name: typeof body?.name === "string" ? body.name : undefined,
+          phone: body?.phone === null ? null : typeof body?.phone === "string" ? body.phone : undefined,
+          active: typeof body?.active === "boolean" ? body.active : undefined,
+        });
+        return r ? json(r) : json({ error: "not_found" }, 404);
+      }
+      if (request.method === "DELETE") {
+        const res = await removeResponder(env, id);
+        if (res.removed) return json({ ok: true });
+        return json({ error: res.reason ?? "failed" }, res.reason === "not_found" ? 404 : 409);
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/oncall/overrides") {

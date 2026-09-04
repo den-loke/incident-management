@@ -203,6 +203,38 @@ export function ackAlert(alertId: string): Promise<void> {
   return postJson(`/api/oncall/alerts/${encodeURIComponent(alertId)}/ack`, {});
 }
 
+// --- On-call roster (engineering) management ---
+async function reqJson(path: string, method: string, body?: unknown): Promise<void> {
+  const res = await fetch(path, {
+    method,
+    credentials: "same-origin",
+    headers: body === undefined ? {} : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = `request failed (${res.status})`;
+    try {
+      const j = (await res.json()) as { error?: string };
+      if (j?.error) detail = j.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+}
+export function addResponder(id: string, phone?: string, name?: string): Promise<void> {
+  return postJson("/api/oncall/responders", { id, phone: phone || null, name });
+}
+export function updateResponder(id: string, patch: { name?: string; phone?: string | null; active?: boolean }): Promise<void> {
+  return reqJson(`/api/oncall/responders/${encodeURIComponent(id)}`, "PATCH", patch);
+}
+export function removeResponder(id: string): Promise<void> {
+  return reqJson(`/api/oncall/responders/${encodeURIComponent(id)}`, "DELETE");
+}
+export function reorderResponders(ids: string[]): Promise<void> {
+  return postJson("/api/oncall/responders/reorder", { ids });
+}
+
 export function promoteAlert(alertId: string): Promise<void> {
   return postJson(`/api/oncall/alerts/${encodeURIComponent(alertId)}/promote`, {});
 }
