@@ -114,3 +114,34 @@ export async function reorderResponders(env: Env, orderedIds: string[]): Promise
   await regenerateFutureShifts(env);
   return listResponders(env);
 }
+
+/**
+ * Sync the roster from the linked Engineering Slack usergroup: every group member
+ * not already a responder is added (name resolved from Slack, appended to the end
+ * of the rotation, active). Existing responders are LEFT AS-IS — their order,
+ * phone, and active flag are preserved, and members no longer in the group are
+ * NOT auto-removed (removing is a deliberate manual action, and we must keep at
+ * least one). Returns the added responders + the resulting roster.
+ */
+export async function syncRosterFromEngineering(
+  env: Env,
+): Promise<{ added: string[]; responders: Responder[]; reason?: string }> {
+  const { resolveTeam } = await import("../teams/service");
+  // Engineering group must be linked (TEAM_ENGINEERING_USERGROUP).
+  if (!env.TEAM_ENGINEERING_USERGROUP || !env.TEAM_ENGINEERING_USERGROUP.trim()) {
+    return { added: [], responders: await listResponders(env), reason: "engineering_group_unconfigured" };
+  }
+  const team = await resolveTeam(env, "engineering");
+  const existing = new Set((await listResponders(env)).map((r) => r.id));
+  const toAdd = team.members.filter((id) => !existing.has(id));
+  const added: string[] = [];
+  for (const id of toAdd) {
+    try {
+      await addResponder(env, { id }); // name resolved from Slack, appended, active
+      added.push(id);
+    } catch {
+      /* skip an id that fails validation; continue the rest */
+    }
+  }
+  return { added, responders: await listResponders(env) };
+}

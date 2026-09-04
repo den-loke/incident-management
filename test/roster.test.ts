@@ -55,4 +55,24 @@ describe("on-call roster management", () => {
     expect(res).toEqual({ removed: false, reason: "min_one" });
     expect((await listResponders(E)).some((r) => r.id === "UROSTER001")).toBe(true);
   });
+
+  it("syncs the roster from the Engineering usergroup, appending missing members", async () => {
+    const { __setUsergroupClient } = await import("../src/teams/service");
+    __setUsergroupClient({ listUsers: async () => ["UROSTER001", "UROSTER002"], setUsers: async () => {} });
+    __setDirectoryFetch(async () => ({ UROSTER001: "Ada", UROSTER002: "Grace" }));
+    // one already present → sync adds only the other
+    await addResponder(E, { id: "UROSTER001", name: "Ada" });
+    const { syncRosterFromEngineering } = await import("../src/oncall/roster");
+    const res = await syncRosterFromEngineering({ ...E, TEAM_ENGINEERING_USERGROUP: "S_ENG" });
+    expect(res.added).toEqual(["UROSTER002"]);
+    const ids = res.responders.filter((r) => r.id.startsWith("UROSTER")).map((r) => r.id).sort();
+    expect(ids).toEqual(["UROSTER001", "UROSTER002"]);
+    __setUsergroupClient(null);
+  });
+
+  it("sync reports engineering_group_unconfigured when the group is unset", async () => {
+    const { syncRosterFromEngineering } = await import("../src/oncall/roster");
+    const res = await syncRosterFromEngineering({ ...E, TEAM_ENGINEERING_USERGROUP: undefined });
+    expect(res.reason).toBe("engineering_group_unconfigured");
+  });
 });
