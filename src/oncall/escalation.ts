@@ -67,8 +67,8 @@ async function fireLevel(env: Env, alert: AlertRow, level: number): Promise<void
   const ladderTarget = level >= MAX_LEVEL ? channel : target?.id ?? channel;
   for (const page of results) {
     await db.run(
-      `INSERT INTO oncall_escalations (id, alert_id, level, target, channel, provider_sid, fired_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO oncall_escalations (id, alert_id, level, target, channel, provider_sid, fired_at, delivery_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uid(),
         alert.id,
@@ -77,6 +77,7 @@ async function fireLevel(env: Env, alert: AlertRow, level: number): Promise<void
         page.channel,
         page.provider_sid ?? null,
         firedAt,
+        page.ok ? "delivered" : "failed",
       ],
     );
   }

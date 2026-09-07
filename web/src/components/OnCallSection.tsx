@@ -76,6 +76,7 @@ function AlertRow({ alert, onChange, names }: { alert: OncallOpenAlert; onChange
           {alert.trail.map((t, i) => (
             <li key={i}>
               L{t.level} · {t.channel} · {fmt(t.fired_at)}
+              {t.delivery_status === "failed" ? " · delivery failed" : ""}
               {t.acked_at ? ` · acked by ${t.acked_by ? uname(t.acked_by, names) : "someone"}` : " · unacked"}
             </li>
           ))}
@@ -233,6 +234,15 @@ function EscalationStep({
       <div className="text-sm">
         <span className="font-medium">{reason}</span>{" "}
         <span className="text-muted-foreground">via {event.channel}</span>
+        {event.delivery_status === "failed" ? (
+          <span className="ml-1.5 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+            Failed
+          </span>
+        ) : event.delivery_status === "pending" ? (
+          <span className="ml-1.5 text-xs text-muted-foreground">Sending…</span>
+        ) : (
+          <span className="ml-1.5 text-xs text-muted-foreground">Delivered</span>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
         {fmt(event.fired_at)}

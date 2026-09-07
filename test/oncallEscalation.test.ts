@@ -47,6 +47,13 @@ async function levels(alertId: string): Promise<number[]> {
   return (results ?? []).map((r) => r.level);
 }
 
+async function deliveries(alertId: string): Promise<string[]> {
+  const { results } = await env.DB.prepare(
+    "SELECT delivery_status FROM oncall_escalations WHERE alert_id = ? ORDER BY fired_at",
+  ).bind(alertId).all<{ delivery_status: string }>();
+  return (results ?? []).map((r) => r.delivery_status);
+}
+
 // Backdate the newest escalation row so the sweep sees it as timed-out.
 async function backdate(alertId: string, minutesAgo: number) {
   const iso = new Date(Date.now() - minutesAgo * 60_000).toISOString();
@@ -78,6 +85,34 @@ describe("on-call escalation ladder", () => {
     ).bind(alert.id).first<{ target: string; channel: string }>();
     expect(row?.target).toBe(RESP[0]);
     expect(row?.channel).toBe("slack");
+  });
+
+  it("records delivery_status 'delivered' when the Slack page succeeds", async () => {
+    const alert = await newAlert();
+    await escalateNew(env as any, alert);
+    expect(await deliveries(alert.id)).toEqual(["delivered"]);
+  });
+
+  it("records delivery_status 'failed' when the Slack page throws (row still written, ladder advances)", async () => {
+    // A Slack client that throws on postBlocks. Previously this bubbled up and no
+    // row was written; now it must persist a 'failed' row instead of vanishing.
+    __setNotifierSlackClient(
+      () =>
+        ({
+          async createChannel() { return "C_x"; },
+          async postMessage() { return "1.0"; },
+          async postBlocks() { throw new Error("slack down"); },
+          async addReaction() {},
+          async viewsPublish() {},
+          async viewsOpen() {},
+          async inviteToChannel() {},
+          async history() { return []; },
+        }) as any,
+    );
+    const alert = await newAlert();
+    await escalateNew(env as any, alert);
+    expect(await levels(alert.id)).toEqual([0]); // row still written
+    expect(await deliveries(alert.id)).toEqual(["failed"]);
   });
 
   it("sweep advances L0->L1->L2 on successive timeouts, terminal at L2", async () => {

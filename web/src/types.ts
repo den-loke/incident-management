@@ -195,6 +195,7 @@ export interface OncallEscalationTrailRow {
   level: number;
   target: string;
   channel: string; // 'slack' | 'sms' | 'voice'
+  delivery_status: "delivered" | "failed" | "pending";
   fired_at: string;
   acked_at: string | null;
   acked_by: string | null;
@@ -240,6 +241,7 @@ export interface OncallEscalationEvent {
   level: number;
   target: string;
   channel: string;
+  delivery_status: "delivered" | "failed" | "pending";
   fired_at: string;
   acked_at: string | null;
   acked_by: string | null;

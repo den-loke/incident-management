@@ -17,6 +17,7 @@ export interface EscalationTrailRow {
   level: number;
   target: string;
   channel: string; // 'slack' | 'sms' | 'voice'
+  delivery_status: "delivered" | "failed" | "pending";
   fired_at: string;
   acked_at: string | null;
   acked_by: string | null;
@@ -72,7 +73,7 @@ async function listUpcomingShifts(env: Env, limit = 8): Promise<RotationShiftVie
 
 async function trailFor(db: D1Db, alertId: string): Promise<EscalationTrailRow[]> {
   return db.all<EscalationTrailRow>(
-    `SELECT level, target, channel, fired_at, acked_at, acked_by
+    `SELECT level, target, channel, delivery_status, fired_at, acked_at, acked_by
        FROM oncall_escalations WHERE alert_id = ? ORDER BY fired_at, level`,
     [alertId],
   );

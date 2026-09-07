@@ -79,6 +79,8 @@ export type PageChannel = "slack" | "sms" | "voice";
 export interface PageResult {
   channel: PageChannel;
   provider_sid?: string; // Twilio SID (slice 4); undefined for Slack.
+  /** false when the send threw — recorded as delivery_status 'failed'. */
+  ok: boolean;
 }
 
 /** Ack / Create-incident buttons for a level 0/1 page. */
@@ -130,18 +132,26 @@ export async function pageViaSlack(
     level >= 2 ? "<!channel>" : target ? `<@${target.id}>` : "";
   const managerPing =
     level === 1 && env.ONCALL_MANAGER ? ` (cc <@${env.ONCALL_MANAGER}>)` : "";
-  const ts = await slack.postBlocks(
-    channel,
-    `Alert: ${alert.title} (level ${level})`,
-    pageBlocks(alert, level, `${mention}${managerPing}`),
-  );
+  let ts: string;
+  try {
+    ts = await slack.postBlocks(
+      channel,
+      `Alert: ${alert.title} (level ${level})`,
+      pageBlocks(alert, level, `${mention}${managerPing}`),
+    );
+  } catch {
+    // Record the attempt as failed rather than throwing — the ladder must still
+    // advance and the timeline should show the miss. Slack is our always-on
+    // channel, so a failure here is exactly what delivery status exists to surface.
+    return { channel: "slack", ok: false };
+  }
   // Seed a ✅ affordance so an emoji ack works alongside the button.
   try {
     await slack.addReaction(channel, ts, "white_check_mark");
   } catch {
     /* non-fatal */
   }
-  return { channel: "slack" };
+  return { channel: "slack", ok: true };
 }
 
 /** SMS body for a page — short, with the ack instruction. */
@@ -194,13 +204,15 @@ export async function pageViaTwilio(
     try {
       if (ch === "sms") {
         const sid = await twilio.sendSms({ to: target.phone, from, body: smsBody(alert, level) });
-        results.push({ channel: "sms", provider_sid: sid });
+        results.push({ channel: "sms", provider_sid: sid, ok: true });
       } else if (ch === "voice") {
         const sid = await twilio.placeCall({ to: target.phone, from, twiml: voiceTwiml(env, alert, level) });
-        results.push({ channel: "voice", provider_sid: sid });
+        results.push({ channel: "voice", provider_sid: sid, ok: true });
       }
     } catch {
-      /* non-fatal: a failed Twilio hop must not block the Slack page or the sweep */
+      // Non-fatal for the Slack page / sweep, but RECORD the miss so the timeline
+      // shows Failed instead of the notification vanishing.
+      results.push({ channel: ch, ok: false });
     }
   }
   return results;
