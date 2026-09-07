@@ -1,8 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { StatusPageView } from "@/pages/StatusPageView";
 import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
+import { EscalationTimeline } from "@/components/OnCallSection";
 import { LoginScreen } from "@/components/LoginScreen";
-import { allOperational, activeIncidentState, emptyState } from "./fixtures";
+import {
+  allOperational,
+  activeIncidentState,
+  emptyState,
+  escalationEvents,
+  escalationNames,
+} from "./fixtures";
 
 // StatusPageView renders purely from `data` — stories never touch /api/*.
 // This is the Storybook harness used for screenshots.
@@ -38,6 +45,16 @@ export const IncidentDetailResolved: StoryObj<typeof IncidentDetailPage> = {
   render: () => (
     <div className="p-4">
       <IncidentDetailPage id="inc_resolved" data={activeIncidentState} onChange={() => {}} />
+    </div>
+  ),
+};
+
+// Escalation timeline — grouped vertical sequence per alert with gap markers.
+export const EscalationTimelineStory: StoryObj<typeof EscalationTimeline> = {
+  name: "EscalationTimeline",
+  render: () => (
+    <div className="max-w-2xl p-4">
+      <EscalationTimeline events={escalationEvents} names={escalationNames} />
     </div>
   ),
 };

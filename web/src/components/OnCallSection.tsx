@@ -8,6 +8,7 @@ import { Input, Select } from "@/components/ui/form";
 import * as api from "@/lib/api";
 import type { OncallSection, OncallOpenAlert, OncallEscalationPath, OncallEscalationEvent } from "@/types";
 import { RosterEditor } from "@/components/RosterEditor";
+import { fmtDuration } from "@/components/incidentUi";
 import { uname } from "@/lib/utils";
 
 function fmt(iso: string): string {
@@ -195,33 +196,127 @@ function EscalationPathDiagram({ path }: { path: OncallEscalationPath }) {
   );
 }
 
-function EscalationsLog({ events, names }: { events: OncallEscalationEvent[]; names?: Record<string, string> }) {
+/** One notification within an alert's escalation sequence, oldest-first. */
+function EscalationStep({
+  event,
+  prevFiredAt,
+  names,
+}: {
+  event: OncallEscalationEvent;
+  prevFiredAt: string | null;
+  names?: Record<string, string>;
+}) {
+  // Explain WHY this level fired: the first is the initial page, later levels
+  // fired because the previous one wasn't acked in time.
+  const reason =
+    prevFiredAt === null
+      ? `Paged level ${event.level}`
+      : `Escalated to level ${event.level} — no ack in time`;
+  // Escalation cadence is minutes (the ack timeout), so surface any gap ≥ 1min —
+  // finer than the incident-timeline gapLabel default (which is tuned for hours).
+  const gapMs = prevFiredAt
+    ? new Date(event.fired_at).getTime() - new Date(prevFiredAt).getTime()
+    : 0;
+  const gap = prevFiredAt && gapMs >= 60_000 ? fmtDuration(prevFiredAt, event.fired_at) : null;
+  const dotClass = event.acked_at
+    ? "bg-muted-foreground/40"
+    : event.alert_status === "resolved"
+      ? "bg-muted-foreground/40"
+      : "bg-foreground";
+  return (
+    <li className="relative pl-5">
+      {/* timeline dot (no vertical rule — house style: no side borders) */}
+      <span className={`absolute left-0 top-1.5 h-2 w-2 rounded-full ${dotClass}`} />
+      {gap ? (
+        <p className="mb-0.5 text-xs italic text-muted-foreground">⏱ {gap} later</p>
+      ) : null}
+      <div className="text-sm">
+        <span className="font-medium">{reason}</span>{" "}
+        <span className="text-muted-foreground">via {event.channel}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {fmt(event.fired_at)}
+        {event.acked_at
+          ? ` · acked by ${event.acked_by ? uname(event.acked_by, names) : "someone"} (${fmtDuration(event.fired_at, event.acked_at)} to ack)`
+          : " · awaiting ack"}
+      </p>
+    </li>
+  );
+}
+
+/**
+ * Escalations as a vertical TIMELINE grouped by alert (incident.io-style),
+ * replacing the flat one-line log. Each alert's notifications read as a sequence
+ * with "N later…" gap markers and per-level ack status. Presentation over the
+ * escalation events we already store — the ladder itself stays hard-coded (see
+ * EscalationPathDiagram). Per-notification delivery status (Delivered/Failed) is
+ * a separate data gap, not surfaced here.
+ */
+export function EscalationTimeline({
+  events,
+  names,
+}: {
+  events: OncallEscalationEvent[];
+  names?: Record<string, string>;
+}) {
+  // Group by alert, each group ordered oldest → newest by fired_at.
+  const groups = new Map<string, OncallEscalationEvent[]>();
+  for (const e of events) {
+    const g = groups.get(e.alert_id) ?? [];
+    g.push(e);
+    groups.set(e.alert_id, g);
+  }
+  const ordered = [...groups.values()].map((g) =>
+    [...g].sort((a, b) => a.fired_at.localeCompare(b.fired_at)),
+  );
+  // Newest alert-sequence first (by its latest event).
+  ordered.sort((a, b) =>
+    b[b.length - 1].fired_at.localeCompare(a[a.length - 1].fired_at),
+  );
+
   return (
     <div className="mb-3">
       <h3 className="mb-1 text-xs text-muted-foreground">Escalations</h3>
       <Card>
         <CardContent className="p-0">
-          {events.length === 0 ? (
+          {ordered.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">No escalations yet.</p>
           ) : (
-            events.map((e, i) => (
-              <div key={e.id}>
-                {i > 0 && <Separator />}
-                <div className="flex items-start justify-between gap-3 px-4 py-2 text-sm">
-                  <div className="min-w-0">
-                    <span className="truncate">{e.alert_title}</span>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      L{e.level} · {e.channel} · {fmt(e.fired_at)}
-                      {e.acked_at ? ` · acked by ${e.acked_by ? uname(e.acked_by, names) : "someone"}` : " · unacked"}
-                      {e.incident_id ? " · incident linked" : ""}
+            ordered.map((group, gi) => {
+              const head = group[group.length - 1]; // latest event carries current status
+              return (
+                <div key={group[0].alert_id}>
+                  {gi > 0 && <Separator />}
+                  <div className="px-4 py-3">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="truncate text-sm font-medium">{head.alert_title}</span>
+                        {head.incident_id ? (
+                          <span className="ml-2 text-xs text-muted-foreground">incident linked</span>
+                        ) : null}
+                      </div>
+                      <Badge variant={head.alert_status === "firing" ? "default" : "outline"}>
+                        {head.alert_status === "firing"
+                          ? "Firing"
+                          : head.alert_status === "ack"
+                            ? "Acked"
+                            : "Resolved"}
+                      </Badge>
                     </div>
+                    <ol className="space-y-2.5">
+                      {group.map((e, i) => (
+                        <EscalationStep
+                          key={e.id}
+                          event={e}
+                          prevFiredAt={i > 0 ? group[i - 1].fired_at : null}
+                          names={names}
+                        />
+                      ))}
+                    </ol>
                   </div>
-                  <Badge variant={e.alert_status === "firing" ? "default" : "outline"}>
-                    {e.alert_status === "firing" ? "Firing" : e.alert_status === "ack" ? "Acked" : "Resolved"}
-                  </Badge>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
@@ -316,7 +411,7 @@ export function OnCallSection() {
       </Card>
 
       <div className="mt-3">
-        <EscalationsLog events={section.escalation_events} names={section.user_names} />
+        <EscalationTimeline events={section.escalation_events} names={section.user_names} />
         <EscalationPathDiagram path={section.path} />
       </div>
     </section>

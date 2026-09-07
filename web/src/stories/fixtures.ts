@@ -1,4 +1,4 @@
-import type { Component, Incident, StatusResponse } from "@/types";
+import type { Component, Incident, OncallEscalationEvent, StatusResponse } from "@/types";
 
 const viewer = { user_id: "U_DEMO", name: "Den" };
 
@@ -103,3 +103,35 @@ export function response(
 export const allOperational = response(componentsAllGreen, []);
 export const activeIncidentState = response(componentsMixed, [activeIncident, resolvedIncident]);
 export const emptyState = response([], []);
+
+// Escalation timeline fixture: one alert paged L1 (unacked) → escalated L2 (acked
+// by Bob 4m later). Exercises the "N later…" gap marker + ack duration.
+export const escalationEvents: OncallEscalationEvent[] = [
+  {
+    id: "esc_1",
+    alert_id: "al_1",
+    alert_title: "API 5xx rate above threshold",
+    alert_status: "ack",
+    incident_id: "inc_active",
+    level: 1,
+    target: "U_ALICE",
+    channel: "sms",
+    fired_at: "2026-09-02T04:30:00Z",
+    acked_at: null,
+    acked_by: null,
+  },
+  {
+    id: "esc_2",
+    alert_id: "al_1",
+    alert_title: "API 5xx rate above threshold",
+    alert_status: "ack",
+    incident_id: "inc_active",
+    level: 2,
+    target: "U_BOB",
+    channel: "voice",
+    fired_at: "2026-09-02T04:40:00Z",
+    acked_at: "2026-09-02T04:44:00Z",
+    acked_by: "U_BOB",
+  },
+];
+export const escalationNames = { U_ALICE: "Alice Chen", U_BOB: "Bob Ng" };

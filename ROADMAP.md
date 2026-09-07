@@ -34,6 +34,13 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Escalation timeline view** — the On-call Escalations surface was a flat
+  one-line-per-event log; now a vertical timeline grouped by alert: "Paged level 1"
+  → "Escalated to level 2 — no ack in time", with "N later…" gap markers
+  (minutes-scale) and per-level channel + ack attribution (who, and time-to-ack).
+  Presentation over the escalation events we already store; the ladder itself stays
+  hard-coded (see the read-only Escalation-path diagram). Per-notification delivery
+  status (Delivered/Failed) is a separate data gap, still open.
 - ✅ **Rich incident-detail page** — the detail route was a bare incident card;
   now a two-column layout: an Activity timeline (with "N later…" gap markers for
   quiet stretches) beside a Properties rail — Timestamps (Declared / Identified /
