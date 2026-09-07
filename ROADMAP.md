@@ -34,6 +34,13 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Rich incident-detail page** — the detail route was a bare incident card;
+  now a two-column layout: an Activity timeline (with "N later…" gap markers for
+  quiet stretches) beside a Properties rail — Timestamps (Declared / Identified /
+  Resolved / Last updated), a Durations block (incident duration, time-to-identify,
+  time-to-resolve, derived from the 0015 lifecycle stamps), Roles with initials
+  chips, and a Slack-channel link. Serves report-accuracy (pain point #2) by
+  surfacing structured data. Presentation over data we already capture.
 - ✅ **Incident lifecycle timestamps** — migration `0015` adds `identified_at` /
   `closed_at` / `last_updated_at`, stamped on the status write path
   (`internalSink`). Insights + reporting now compute **real MTTA**
