@@ -12,6 +12,8 @@ export interface Bucket {
   count: number;
   /** Mean time to resolve (seconds) for resolved incidents in this bucket; null if none. */
   mttr_seconds: number | null;
+  /** Mean time to identify (seconds) — created_at → identified_at; null if none identified. */
+  mtta_seconds: number | null;
 }
 
 export interface MonthPoint {
@@ -29,6 +31,8 @@ export interface Insights {
   by_month: MonthPoint[]; // chronological, opened+resolved per month in window
   open_action_items: number;
   overall_mttr_seconds: number | null;
+  /** Mean time to identify (seconds) across incidents opened in the window; null if none. */
+  overall_mtta_seconds: number | null;
 }
 
 interface IncidentRow {
@@ -36,6 +40,7 @@ interface IncidentRow {
   routing_path: RoutingPath;
   created_at: string;
   resolved_at: string | null;
+  identified_at: string | null;
 }
 
 const SEVERITIES: IncidentSeverity[] = ["sev1", "sev2", "sev3"];
@@ -63,18 +68,27 @@ function bucketBy(
       .filter((r) => r.resolved_at)
       .map((r) => secondsBetween(r.created_at, r.resolved_at as string))
       .filter((s) => s >= 0);
-    return { key, count: inBucket.length, mttr_seconds: mean(mttrs) };
+    const mttas = inBucket
+      .filter((r) => r.identified_at)
+      .map((r) => secondsBetween(r.created_at, r.identified_at as string))
+      .filter((s) => s >= 0);
+    return {
+      key,
+      count: inBucket.length,
+      mttr_seconds: mean(mttrs),
+      mtta_seconds: mean(mttas),
+    };
   });
 }
 
 /** Build insights for [from, to). */
 export async function buildInsights(db: Db, from: string, to: string): Promise<Insights> {
   const opened = await db.all<IncidentRow>(
-    "SELECT severity, routing_path, created_at, resolved_at FROM incidents WHERE created_at >= ? AND created_at < ?",
+    "SELECT severity, routing_path, created_at, resolved_at, identified_at FROM incidents WHERE created_at >= ? AND created_at < ?",
     [from, to],
   );
   const resolvedInWindow = await db.all<IncidentRow>(
-    "SELECT severity, routing_path, created_at, resolved_at FROM incidents WHERE resolved_at >= ? AND resolved_at < ?",
+    "SELECT severity, routing_path, created_at, resolved_at, identified_at FROM incidents WHERE resolved_at >= ? AND resolved_at < ?",
     [from, to],
   );
   const backlogRow = await db.get<{ n: number }>(
@@ -107,6 +121,13 @@ export async function buildInsights(db: Db, from: string, to: string): Promise<I
       .map((r) => secondsBetween(r.created_at, r.resolved_at as string))
       .filter((s) => s >= 0),
   );
+  // MTTA over incidents OPENED in the window that reached 'identified'.
+  const overallMtta = mean(
+    opened
+      .filter((r) => r.identified_at)
+      .map((r) => secondsBetween(r.created_at, r.identified_at as string))
+      .filter((s) => s >= 0),
+  );
 
   return {
     from,
@@ -117,5 +138,6 @@ export async function buildInsights(db: Db, from: string, to: string): Promise<I
     by_month,
     open_action_items: backlogRow?.n ?? 0,
     overall_mttr_seconds: overallMttr,
+    overall_mtta_seconds: overallMtta,
   };
 }

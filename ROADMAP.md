@@ -34,6 +34,12 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Incident lifecycle timestamps** — migration `0015` adds `identified_at` /
+  `closed_at` / `last_updated_at`, stamped on the status write path
+  (`internalSink`). Insights + reporting now compute **real MTTA**
+  (created→identified) instead of the "first update after opening" proxy.
+  Unblocks the rich incident-detail page (durations block) and stakeholder-waiting
+  reminders (`last_updated_at`).
 - ✅ **Incident engine** — declare / update / resolve via Slack; one Durable Object
   per incident; 15-min alarm → OpenAI summary → progress-update loop.
 - ✅ **Resolve-from-Slack** wiring.

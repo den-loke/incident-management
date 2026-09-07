@@ -13,14 +13,29 @@ export class FakeDb implements Db {
 
   async run(sql: string, params: unknown[] = []): Promise<void> {
     if (sql.startsWith("INSERT INTO incidents")) {
-      const [id, name, status, severity, created_at, resolved_at] = params;
+      const [
+        id,
+        name,
+        status,
+        severity,
+        routing_path,
+        created_at,
+        resolved_at,
+        identified_at,
+        closed_at,
+        last_updated_at,
+      ] = params;
       this.incidents.set(id as string, {
         id,
         name,
         status,
         severity,
+        routing_path,
         created_at,
         resolved_at,
+        identified_at,
+        closed_at,
+        last_updated_at,
       });
       return;
     }
@@ -29,12 +44,20 @@ export class FakeDb implements Db {
       this.updates.push({ id, incident_id, body, status, created_at });
       return;
     }
-    if (sql.startsWith("UPDATE incidents SET status")) {
-      const [status, resolved_at, id] = params;
+    if (sql.startsWith("UPDATE incidents")) {
+      // Params: status, resolved_at, closed_at, last_updated_at, identified_at, id
+      const [status, resolved_at, closed_at, last_updated_at, identified_at, id] =
+        params;
       const row = this.incidents.get(id as string);
       if (row) {
         row.status = status;
         row.resolved_at = resolved_at;
+        row.closed_at = closed_at;
+        row.last_updated_at = last_updated_at;
+        // COALESCE(identified_at, ?): only stamp if not already set.
+        if (row.identified_at == null && identified_at != null) {
+          row.identified_at = identified_at;
+        }
       }
       return;
     }

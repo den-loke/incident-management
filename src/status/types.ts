@@ -68,7 +68,21 @@ export interface Incident {
   routing_path: RoutingPath;
   created_at: string;
   resolved_at: string | null;
+  /** First time status reached 'identified' (or beyond); null if never. */
+  identified_at: string | null;
+  /** When the incident was closed. Mirrors resolved_at today; kept distinct. */
+  closed_at: string | null;
+  /** Bumped on every status change / appended update. Never null after 0015. */
+  last_updated_at: string | null;
 }
+
+/** Status rank for lifecycle comparisons (monotonic forward progression). */
+export const STATUS_RANK: Record<IncidentStatus, number> = {
+  investigating: 0,
+  identified: 1,
+  monitoring: 2,
+  resolved: 3,
+};
 
 export interface IncidentUpdate {
   id: string;

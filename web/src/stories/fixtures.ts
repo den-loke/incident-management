@@ -24,6 +24,9 @@ export const activeIncident: Incident = {
   routing_path: "internal",
   created_at: "2026-09-02T04:30:00Z",
   resolved_at: null,
+  identified_at: "2026-09-02T04:40:00Z",
+  closed_at: null,
+  last_updated_at: "2026-09-02T04:40:00Z",
   roles: [
     {
       incident_id: "inc_active",
@@ -60,6 +63,9 @@ export const resolvedIncident: Incident = {
   routing_path: "external",
   created_at: "2026-09-01T22:00:00Z",
   resolved_at: "2026-09-01T22:45:00Z",
+  identified_at: "2026-09-01T22:15:00Z",
+  closed_at: "2026-09-01T22:45:00Z",
+  last_updated_at: "2026-09-01T22:45:00Z",
   roles: [],
   pending_resolution: null,
   channel: "C0DEMO123",

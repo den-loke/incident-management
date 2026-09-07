@@ -42,6 +42,54 @@ describe("InternalStatusSink", () => {
     expect(after?.resolved_at).not.toBeNull();
   });
 
+  it("stamps last_updated_at on open and identified_at when first reaching identified", async () => {
+    const db = new FakeDb();
+    const sink = new InternalStatusSink(db);
+    const inc = await sink.openIncident({ name: "Degraded" });
+
+    expect(inc.last_updated_at).toBe(inc.created_at);
+    expect(inc.identified_at).toBeNull();
+    expect(inc.closed_at).toBeNull();
+
+    await sink.appendIncidentUpdate(inc.id, "Root cause found", "identified");
+    const identified = await sink.getIncident(inc.id);
+    expect(identified?.identified_at).not.toBeNull();
+    expect(identified?.last_updated_at).toBe(identified?.identified_at);
+    expect(identified?.closed_at).toBeNull();
+
+    // identified_at is stamped ONCE — a later monitoring update must not move it,
+    // while last_updated_at tracks the latest update (>=, since the clock may not
+    // have advanced a whole millisecond between the two writes).
+    const firstIdentifiedAt = identified?.identified_at as string;
+    await sink.appendIncidentUpdate(inc.id, "Watching", "monitoring");
+    const monitoring = await sink.getIncident(inc.id);
+    expect(monitoring?.identified_at).toBe(firstIdentifiedAt);
+    expect(
+      new Date(monitoring?.last_updated_at as string).getTime(),
+    ).toBeGreaterThanOrEqual(new Date(firstIdentifiedAt).getTime());
+  });
+
+  it("stamps closed_at (and identified_at) when an update resolves directly", async () => {
+    const db = new FakeDb();
+    const sink = new InternalStatusSink(db);
+    const inc = await sink.openIncident({ name: "Outage" });
+
+    await sink.appendIncidentUpdate(inc.id, "All clear", "resolved");
+    const after = await sink.getIncident(inc.id);
+    expect(after?.closed_at).toBe(after?.resolved_at);
+    // Resolving directly from investigating back-stamps identified_at,
+    // since 'resolved' outranks 'identified'.
+    expect(after?.identified_at).not.toBeNull();
+  });
+
+  it("stamps identified_at at open when declared already at that status", async () => {
+    const db = new FakeDb();
+    const sink = new InternalStatusSink(db);
+    const inc = await sink.openIncident({ name: "Known", status: "identified" });
+    expect(inc.identified_at).toBe(inc.created_at);
+    expect(inc.closed_at).toBeNull();
+  });
+
   it("sets component status", async () => {
     const db = new FakeDb();
     db.seedComponent("cmp_api", "API");
