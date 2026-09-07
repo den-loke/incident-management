@@ -13,11 +13,15 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
 - [x] **#1 Rich incident-detail page** — Properties rail (Timestamps & durations,
   Roles with initials chips, Slack link) + Activity timeline with "N later…" gap
   markers, in a two-column layout. Built on #2's timestamps.
-  _(PR: feat/rich-incident-detail — next up.)_
-- [ ] **#3 Escalation timeline view** — vertical timeline over the escalation events
-  we already store (presentation over `oncall_escalations`). _Next up._
+  _(Shipped — PR #64 merged to main.)_
+- [x] **#3 Escalation timeline view** — the flat one-line escalation log is now a
+  grouped vertical timeline per alert: "Paged L1" → "Escalated to L2 — no ack in
+  time", with "N later…" gap markers (minutes-scale) and per-level ack attribution
+  + time-to-ack. Presentation over `oncall_escalations`.
+  _(PR: feat/escalation-timeline — next up.)_
 - [ ] **#4 Notification delivery status** — persist Delivered/Failed per notification
-  (only new data gap; notifier currently fires-and-forgets).
+  (only new data gap; notifier currently fires-and-forgets). _Next up — this one
+  IS a data change (new column on `oncall_escalations` + notifier plumbing)._
 - [ ] **#5 Structured post-incident editor** — fixed sections.
 
 ## Build-brief items (still open / blocked)
