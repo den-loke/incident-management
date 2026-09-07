@@ -91,7 +91,13 @@ export function response(
   components: Component[],
   incidents: Incident[],
 ): StatusResponse {
-  return { viewer, components, incidents, maintenance: [] };
+  return {
+    viewer,
+    components,
+    incidents,
+    maintenance: [],
+    user_names: { U_ALICE: "Alice Chen", U_DEMO: "Den" },
+  };
 }
 
 export const allOperational = response(componentsAllGreen, []);

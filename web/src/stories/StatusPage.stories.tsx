@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { StatusPageView } from "@/pages/StatusPageView";
+import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
 import { LoginScreen } from "@/components/LoginScreen";
 import { allOperational, activeIncidentState, emptyState } from "./fixtures";
 
@@ -19,4 +20,24 @@ export const Empty: Story = { args: { data: emptyState } };
 
 export const Login: StoryObj<typeof LoginScreen> = {
   render: () => <LoginScreen />,
+};
+
+// Rich incident-detail page — Properties rail (timestamps & durations, roles,
+// links) + activity timeline with gap markers. Renders purely from `data`.
+export const IncidentDetailActive: StoryObj<typeof IncidentDetailPage> = {
+  name: "IncidentDetail (active)",
+  render: () => (
+    <div className="p-4">
+      <IncidentDetailPage id="inc_active" data={activeIncidentState} onChange={() => {}} />
+    </div>
+  ),
+};
+
+export const IncidentDetailResolved: StoryObj<typeof IncidentDetailPage> = {
+  name: "IncidentDetail (resolved)",
+  render: () => (
+    <div className="p-4">
+      <IncidentDetailPage id="inc_resolved" data={activeIncidentState} onChange={() => {}} />
+    </div>
+  ),
 };

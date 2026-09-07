@@ -17,6 +17,54 @@ export function fmt(iso: string): string {
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+/** Human duration between two ISO instants, e.g. "1h 45m", "3d 2h", "45s". */
+export function fmtDuration(fromIso: string, toIso: string): string {
+  const ms = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  if (h < 24) return rm ? `${h}h ${rm}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh ? `${d}d ${rh}h` : `${d}d`;
+}
+
+export interface IncidentDurations {
+  /** created → (resolved|now). */
+  total: string;
+  /** created → identified_at (time to detect/acknowledge); null if not identified. */
+  timeToIdentify: string | null;
+  /** created → resolved_at (time to fix); null if unresolved. */
+  timeToResolve: string | null;
+}
+
+/** Derive the durations block from an incident's lifecycle timestamps. */
+export function deriveDurations(incident: Incident): IncidentDurations {
+  const end = incident.resolved_at ?? new Date().toISOString();
+  return {
+    total: fmtDuration(incident.created_at, end),
+    timeToIdentify: incident.identified_at
+      ? fmtDuration(incident.created_at, incident.identified_at)
+      : null,
+    timeToResolve: incident.resolved_at
+      ? fmtDuration(incident.created_at, incident.resolved_at)
+      : null,
+  };
+}
+
+const GAP_THRESHOLD_MS = 60 * 60 * 1000; // surface a marker when > 1h between updates.
+
+/** Whether to render a "N later…" gap marker between two consecutive updates. */
+export function gapLabel(newerIso: string, olderIso: string): string | null {
+  const ms = new Date(newerIso).getTime() - new Date(olderIso).getTime();
+  if (!Number.isFinite(ms) || ms <= GAP_THRESHOLD_MS) return null;
+  return `${fmtDuration(olderIso, newerIso)} later`;
+}
+
 const SEVERITY_RANK: Record<Component["status"], number> = {
   operational: 0,
   under_maintenance: 1,

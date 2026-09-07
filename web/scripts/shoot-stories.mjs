@@ -27,6 +27,8 @@ const STORIES = [
   "pages-statuspage--active-incident",
   "pages-statuspage--empty",
   "pages-statuspage--login",
+  "pages-statuspage--incident-detail-active",
+  "pages-statuspage--incident-detail-resolved",
 ];
 
 const MIME = {
