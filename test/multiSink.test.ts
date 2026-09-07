@@ -12,6 +12,9 @@ function fakeSink(tag: string, calls: string[]): StatusSink {
     routing_path: "internal",
     created_at: "t",
     resolved_at: null,
+    identified_at: null,
+    closed_at: null,
+    last_updated_at: "t",
   };
   return {
     openIncident: vi.fn(async () => {

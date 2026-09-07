@@ -58,6 +58,9 @@ export interface Incident {
   routing_path: RoutingPath;
   created_at: string;
   resolved_at: string | null;
+  identified_at: string | null;
+  closed_at: string | null;
+  last_updated_at: string | null;
   updates: IncidentUpdate[];
   roles: RoleAssignment[];
   pending_resolution: PendingResolution | null;
@@ -121,6 +124,7 @@ export interface InsightsBucket {
   key: string;
   count: number;
   mttr_seconds: number | null;
+  mtta_seconds: number | null;
 }
 export interface InsightsMonthPoint {
   month: string;
@@ -136,6 +140,7 @@ export interface Insights {
   by_month: InsightsMonthPoint[];
   open_action_items: number;
   overall_mttr_seconds: number | null;
+  overall_mtta_seconds: number | null;
 }
 
 // --- Follow-ups + history (GET /api/followups, /api/history) ---

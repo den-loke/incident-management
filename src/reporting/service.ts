@@ -34,6 +34,7 @@ interface IncidentRow {
   id: string;
   created_at: string;
   resolved_at: string | null;
+  identified_at: string | null;
 }
 
 function secondsBetween(a: string, b: string): number {
@@ -55,7 +56,7 @@ export async function buildReport(
   to: string,
 ): Promise<Report> {
   const opened = await db.all<IncidentRow>(
-    "SELECT id, created_at, resolved_at FROM incidents WHERE created_at >= ? AND created_at < ?",
+    "SELECT id, created_at, resolved_at, identified_at FROM incidents WHERE created_at >= ? AND created_at < ?",
     [from, to],
   );
   const resolvedInWindow = await db.all<IncidentRow>(
@@ -75,9 +76,16 @@ export async function buildReport(
     .map((r) => secondsBetween(r.created_at, r.resolved_at as string))
     .filter((s) => s >= 0);
 
-  // MTTA proxy: open -> first update after the opening one, over opened incidents.
+  // MTTA: created -> identified_at (real time-to-acknowledge, since migration
+  // 0015). For older rows with no identified_at, fall back to the "first update
+  // after the opening one" proxy so historical reports stay populated.
   const mttas: number[] = [];
   for (const inc of opened) {
+    if (inc.identified_at) {
+      const s = secondsBetween(inc.created_at, inc.identified_at);
+      if (s >= 0) mttas.push(s);
+      continue;
+    }
     const updates = await db.all<{ created_at: string }>(
       "SELECT created_at FROM incident_updates WHERE incident_id = ? ORDER BY created_at",
       [inc.id],

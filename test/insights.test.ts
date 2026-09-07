@@ -1,5 +1,5 @@
 import { env, SELF } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { D1Db } from "../src/status/d1";
 import { buildInsights } from "../src/reporting/insights";
 import { SESSION_COOKIE, signSession, makeSession } from "../src/auth/session";
@@ -13,18 +13,23 @@ async function inc(
   routing: string,
   created: string,
   resolved: string | null,
+  identified: string | null = null,
 ) {
   await env.DB.prepare(
-    "INSERT INTO incidents (id, name, status, severity, routing_path, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).bind(id, id, resolved ? "resolved" : "investigating", severity, routing, created, resolved).run();
+    "INSERT INTO incidents (id, name, status, severity, routing_path, created_at, resolved_at, identified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).bind(id, id, resolved ? "resolved" : "investigating", severity, routing, created, resolved, identified).run();
 }
 
 describe("insights", () => {
-  afterEach(async () => {
+  const clean = async () => {
     for (const t of ["postmortem_action_items", "postmortems", "incident_updates", "incidents"]) {
       await env.DB.prepare(`DELETE FROM ${t}`).run();
     }
-  });
+  };
+  // isolatedStorage is off (shared D1); clean both sides so a prior file's rows
+  // can't inflate total_opened.
+  beforeEach(clean);
+  afterEach(clean);
 
   it("buckets by severity + routing path, builds a monthly trend, computes MTTR", async () => {
     const from = "2026-08-01T00:00:00.000Z";
@@ -62,6 +67,22 @@ describe("insights", () => {
 
     // overall MTTR = mean(7200, 3600) = 5400.
     expect(ins.overall_mttr_seconds).toBe(5400);
+  });
+
+  it("computes MTTA (created→identified) overall and per bucket", async () => {
+    const from = "2026-08-01T00:00:00.000Z";
+    const to = "2026-10-01T00:00:00.000Z";
+    // sev1 identified +30m (1800s), sev2 identified +90m (5400s), sev3 never identified.
+    await inc("A", "sev1", "internal", "2026-08-05T00:00:00.000Z", null, "2026-08-05T00:30:00.000Z");
+    await inc("B", "sev2", "internal", "2026-08-06T00:00:00.000Z", null, "2026-08-06T01:30:00.000Z");
+    await inc("C", "sev3", "internal", "2026-08-07T00:00:00.000Z", null, null);
+
+    const ins = await buildInsights(new D1Db(env.DB), from, to);
+    // overall MTTA = mean(1800, 5400) = 3600 (C excluded — never identified).
+    expect(ins.overall_mtta_seconds).toBe(3600);
+    expect(ins.by_severity.find((b) => b.key === "sev1")?.mtta_seconds).toBe(1800);
+    expect(ins.by_severity.find((b) => b.key === "sev2")?.mtta_seconds).toBe(5400);
+    expect(ins.by_severity.find((b) => b.key === "sev3")?.mtta_seconds).toBeNull();
   });
 
   it("GET /api/insights requires a session and returns the payload", async () => {
