@@ -81,6 +81,7 @@ export interface EscalationEventView {
   level: number;
   target: string;
   channel: string; // 'slack' | 'sms' | 'voice'
+  delivery_status: "delivered" | "failed" | "pending";
   fired_at: string;
   acked_at: string | null;
   acked_by: string | null;
@@ -95,6 +96,7 @@ interface EscRow {
   level: number;
   target: string;
   channel: string;
+  delivery_status: "delivered" | "failed" | "pending";
   fired_at: string;
   acked_at: string | null;
   acked_by: string | null;
@@ -108,7 +110,8 @@ interface EscRow {
 export async function listEscalationEvents(env: Env, limit = 100): Promise<EscalationEventView[]> {
   const rows = await new D1Db(env.DB).all<EscRow>(
     `SELECT e.id, e.alert_id, a.title AS alert_title, a.status AS alert_status,
-            a.incident_id, e.level, e.target, e.channel, e.fired_at, e.acked_at, e.acked_by
+            a.incident_id, e.level, e.target, e.channel, e.delivery_status,
+            e.fired_at, e.acked_at, e.acked_by
        FROM oncall_escalations e
        JOIN oncall_alerts a ON a.id = e.alert_id
       ORDER BY e.fired_at DESC, e.level DESC

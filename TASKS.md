@@ -18,11 +18,14 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
   grouped vertical timeline per alert: "Paged L1" → "Escalated to L2 — no ack in
   time", with "N later…" gap markers (minutes-scale) and per-level ack attribution
   + time-to-ack. Presentation over `oncall_escalations`.
-  _(PR: feat/escalation-timeline — next up.)_
-- [ ] **#4 Notification delivery status** — persist Delivered/Failed per notification
-  (only new data gap; notifier currently fires-and-forgets). _Next up — this one
-  IS a data change (new column on `oncall_escalations` + notifier plumbing)._
-- [ ] **#5 Structured post-incident editor** — fixed sections.
+  _(Shipped — PR #65 merged to main.)_
+- [x] **#4 Notification delivery status** — migration `0016` adds `delivery_status`
+  to `oncall_escalations`; the notifier now REPORTS failures (Slack/Twilio) instead
+  of swallowing them, so a failed send persists a `failed` row. Surfaced in the
+  escalation timeline (Delivered / Failed badge) + the open-alert trail.
+  _(PR: feat/notification-delivery-status — closes the only new-data gap.)_
+- [ ] **#5 Structured post-incident editor** — fixed sections. _Next up — likely
+  the last screenshot-derived slice._
 
 ## Build-brief items (still open / blocked)
 

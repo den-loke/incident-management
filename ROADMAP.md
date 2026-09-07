@@ -34,6 +34,13 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Notification delivery status** — migration `0016` adds `delivery_status`
+  (delivered / failed / pending) to `oncall_escalations`. The notifier previously
+  fired-and-forgot — a failed Slack post produced no row, a failed Twilio hop was
+  swallowed; now every attempt RECORDS its outcome (a failed send persists a
+  `failed` row and the ladder still advances). Surfaced in the escalation timeline
+  (Delivered / Failed) and the open-alert trail. The one true new-data gap from
+  the screenshots.
 - ✅ **Escalation timeline view** — the On-call Escalations surface was a flat
   one-line-per-event log; now a vertical timeline grouped by alert: "Paged level 1"
   → "Escalated to level 2 — no ack in time", with "N later…" gap markers
