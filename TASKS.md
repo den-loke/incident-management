@@ -44,7 +44,12 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
   page (actor names resolved, action labels, target, source badge).
   _(PR: feat/audit-log. Slack-interactivity + system/cron actors can be layered on later
   at those boundaries without schema change.)_
-- [ ] Stakeholder-waiting reminders — UNBLOCKED (Den, cycle 7): remind when no update for SEV1/SEV2 15m, SEV3 1h; posting ANY update (incl. "no further updates") resets the clock. Cron vs last_updated_at. NEXT BUILD.
+- [x] Stakeholder-waiting reminders — DONE. Migration `0018` adds `last_reminded_at`;
+  `sweepStakeholderReminders` (piggybacks the 1-min cron tick) nudges the incident
+  lead (Customer Support Lead → Engineering Lead → @channel) in the incident's Slack
+  channel when an OPEN incident's `last_updated_at` is stale past its severity
+  threshold (SEV1/SEV2 15m, SEV3 60m). Posting any update resets the clock;
+  `last_reminded_at` gates re-nudges to one per threshold window. _(PR: feat/stakeholder-reminders.)_
 - [~] SSO deprovisioning — OUT OF SCOPE (Den, cycle 7): auth is Sign-in-with-Slack OIDC + team_id allow-list, no separate IdP to deprovision from; Slack-workspace removal is the deprovision path and takes effect at next session check.
 - [ ] Status-page email/SMS subscriptions
 - [x] Codified decision flow — DONE (criteria from Den, cycle 7). Hard-coded LOKE
