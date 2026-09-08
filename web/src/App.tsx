@@ -13,6 +13,7 @@ import {
   TeamsPage,
   MaintenancePage,
   AuditPage,
+  DecisionGuidePage,
 } from "@/pages/sectionPages";
 import type { StatusResponse } from "@/types";
 
@@ -43,6 +44,8 @@ function Routed({ data, onChange }: { data: StatusResponse; onChange: () => void
       return <TeamsPage />;
     case "/audit":
       return <AuditPage data={data} />;
+    case "/decision-guide":
+      return <DecisionGuidePage />;
     case "/":
       return <StatusPageView data={data} />;
     default:

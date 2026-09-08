@@ -4,6 +4,7 @@ import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
 import { EscalationTimeline } from "@/components/OnCallSection";
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { AuditSection } from "@/components/AuditSection";
+import { DecisionGuideSection } from "@/components/DecisionGuideSection";
 import { LoginScreen } from "@/components/LoginScreen";
 import {
   allOperational,
@@ -49,6 +50,33 @@ export const IncidentDetailResolved: StoryObj<typeof IncidentDetailPage> = {
       <IncidentDetailPage id="inc_resolved" data={activeIncidentState} onChange={() => {}} />
     </div>
   ),
+};
+
+export const DecisionGuide: StoryObj<typeof DecisionGuideSection> = {
+  name: "DecisionGuide",
+  render: () => {
+    const flow = {
+      severity: [
+        { severity: "sev1", label: "SEV1", headline: "Many orgs, or a Tier-1 org, blocked from transacting.", includes: ["Many customers across many orgs cannot transact (log in, pay).", "A single Tier-1 org cannot transact."], excludes: ["Only a handful of customers affected.", "A single mid-tier org affected — that is SEV2 or lower."] },
+        { severity: "sev2", label: "SEV2", headline: "Significant degradation, or a moderate number of customers blocked across multiple orgs.", includes: ["Significantly degraded performance affecting transacting.", "A moderate number of customers across multiple orgs blocked.", "A single mid-tier org blocked from transacting."], excludes: ["Full, wide transaction outage — that is SEV1."] },
+        { severity: "sev3", label: "SEV3", headline: "Minor / low-impact. No transaction impact; a workaround exists.", includes: ["No customer transaction impact.", "A workaround exists.", "Cosmetic / internal-only (catch-all)."], excludes: ["Anything blocking transactions — that is SEV2 or SEV1."] },
+      ],
+      routing: [
+        { path: "internal", label: "Internal — page on-call", headline: "It's our systems / our fault.", detail: "Full response: pages on-call + both leads." },
+        { path: "external", label: "External — communicate", headline: "It's an upstream or partner issue.", detail: "Communicate, don't page: Support-lead only." },
+      ],
+      escalation_triggers: ["Impact widened — more orgs affected.", "A Tier-1 org is now affected.", "It now meets a higher tier's bar."],
+      external_comms_threshold: ["Any SEV1: publish.", "Customer-facing SEV2: publish.", "No customer transaction impact: keep internal."],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).fetch = async () =>
+      new Response(JSON.stringify(flow), { headers: { "content-type": "application/json" } });
+    return (
+      <div className="max-w-3xl p-4">
+        <DecisionGuideSection />
+      </div>
+    );
+  },
 };
 
 // Audit log — append-only who-did-what, actor names resolved from user_names.

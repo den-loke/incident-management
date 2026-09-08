@@ -17,6 +17,7 @@ import {
 } from "./incidents/commands";
 import { requestResolve, confirmResolve } from "./incidents/jointResolve";
 import { setSeverity } from "./incidents/severity";
+import { buildDecisionFlow } from "./incidents/decisionFlow";
 import { recordAudit, listAudit } from "./audit/log";
 import {
   INCIDENT_STATUSES,
@@ -609,6 +610,13 @@ export default {
       const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
       const entries = await listAudit(env, { targetId, limit });
       return json({ entries });
+    }
+
+    // --- Decision flow (session-gated). Static, hard-coded LOKE criteria. ---
+    if (request.method === "GET" && url.pathname === "/api/decision-flow") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      return json(buildDecisionFlow());
     }
     if (request.method === "GET" && url.pathname === "/api/insights") {
       const session = await getSession(request, env);

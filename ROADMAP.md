@@ -40,6 +40,13 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   `get_draft_report_data` (detail + timeline + post-mortem, for an agent asked to
   write up a report). Backed by a reusable `src/incidents/read.ts`. Serves report
   accuracy: an agent can now drill into ONE incident, not just query aggregates.
+- ✅ **Codified decision flow** — LOKE's real classification/routing criteria (from
+  Den), hard-coded in `src/incidents/decisionFlow.ts` as the single source of truth:
+  severity SEV1/2/3 (with include + "not:" guards), internal-vs-external routing
+  (page vs communicate), mid-incident escalation triggers, and the external-comms
+  threshold. Surfaced two ways so they can't drift: a read-only `/decision-guide` web
+  page and inline context guidance in the Slack declare modal. `GET /api/decision-flow`
+  is session-gated. Hard-coded, not a builder (stance).
 - ✅ **Audit log (PCI)** — append-only `audit_log` table (migration `0017`) recording
   who-did-what-when for state-changing actions. A best-effort `recordAudit` helper
   (never throws — an audit failure must not fail the audited action) is called at the

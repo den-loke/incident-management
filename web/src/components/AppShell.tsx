@@ -18,6 +18,7 @@ export const NAV: NavItem[] = [
   { path: "/follow-ups", label: "Follow-ups" },
   { path: "/insights", label: "Insights" },
   { path: "/teams", label: "Teams" },
+  { path: "/decision-guide", label: "Decision guide" },
   { path: "/audit", label: "Audit" },
 ];
 
