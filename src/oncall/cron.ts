@@ -11,6 +11,7 @@ import { generateShifts } from "./rotation";
 import { sweepEscalations } from "./escalation";
 import { pollPartnerStatus } from "./partnerMonitor";
 import { reconcileMaintenance } from "../maintenance/service";
+import { sweepStakeholderReminders } from "../incidents/reminders";
 
 // Cron expressions declared in wrangler.jsonc [triggers].
 const SHIFT_GEN_CRON = "0 0 * * *"; // daily at 00:00 UTC — top up the rotation
@@ -28,6 +29,10 @@ export async function runOncallScheduled(
       await sweepEscalations(env);
       // Scheduled maintenance: activate/complete windows on the minute tick.
       await reconcileMaintenance(env);
+      // Stakeholder-waiting reminders: nudge the lead when an open incident has
+      // gone quiet past its severity threshold. Piggybacks the 1-min tick; the
+      // per-severity + last_reminded_at gating keeps it from nudging every minute.
+      await sweepStakeholderReminders(env);
       // Partner status-page monitor: piggyback on the 1-min sweep but poll only
       // every 5th minute (partner feeds are cheap but per-minute is impolite).
       // No new cron trigger needed. No-op when PARTNER_STATUS_FEEDS is unset.

@@ -34,6 +34,14 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Stakeholder-waiting reminders** — build-brief pain point #1 (stakeholders left
+  waiting). A cron sweep (piggybacks the existing 1-min tick, no new trigger) nudges
+  the incident lead in the incident's Slack channel when an OPEN incident's
+  `last_updated_at` goes stale past its severity threshold — SEV1/SEV2 15 min, SEV3
+  60 min (hard-coded, Den). Lead = Customer Support Lead → Engineering Lead →
+  @channel. Posting ANY update resets the clock (it's a prompt, not a nag);
+  migration `0018` adds `last_reminded_at` so re-nudges fire at most once per
+  threshold window, not every minute. No AI, no config surface.
 - ✅ **MCP per-incident tools** — the MCP connector was analytics-first (aggregates
   only). Added three read-only per-incident tools — `get_incident` (detail + timeline
   + derived durations in seconds), `get_incident_timeline` (just the narrative), and
