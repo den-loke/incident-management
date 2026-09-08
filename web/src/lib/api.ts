@@ -304,6 +304,20 @@ export function fetchHistory(filters: { severity?: string; routing_path?: string
   return getList(`/api/history${qs ? `?${qs}` : ""}`, "incidents");
 }
 
+export interface AuditEntry {
+  id: string;
+  at: string;
+  actor: string;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: Record<string, unknown> | null;
+  source: string;
+}
+export function fetchAudit(limit = 100): Promise<AuditEntry[]> {
+  return getList(`/api/audit?limit=${limit}`, "entries");
+}
+
 export interface TeamsResponse {
   teams: import("@/types").Team[];
   stakeholder_optins: string[];

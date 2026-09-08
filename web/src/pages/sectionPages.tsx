@@ -4,6 +4,7 @@ import { InsightsSection } from "@/components/InsightsSection";
 import { ReportPanel } from "@/components/ReportPanel";
 import { TeamsSection } from "@/components/TeamsSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
+import { AuditSection } from "@/components/AuditSection";
 import type { StatusResponse } from "@/types";
 
 // These sections are self-fetching (own /api call), so the pages are thin.
@@ -51,6 +52,18 @@ export function MaintenancePage({ data, onChange }: { data: StatusResponse; onCh
     <div className="space-y-4">
       <h1 className="text-xl font-semibold tracking-tight">Maintenance</h1>
       <MaintenanceSection windows={data.maintenance} onChange={onChange} />
+    </div>
+  );
+}
+
+export function AuditPage({ data }: { data: StatusResponse }) {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold tracking-tight">Audit log</h1>
+      <p className="text-sm text-muted-foreground">
+        Append-only record of state-changing actions — who did what, and when.
+      </p>
+      <AuditSection names={data.user_names} />
     </div>
   );
 }

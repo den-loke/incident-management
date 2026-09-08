@@ -31,6 +31,7 @@ const STORIES = [
   "pages-statuspage--incident-detail-resolved",
   "pages-statuspage--escalation-timeline-story",
   "pages-statuspage--postmortem-editor",
+  "pages-statuspage--audit-log",
 ];
 
 const MIME = {

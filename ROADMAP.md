@@ -34,6 +34,15 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Audit log (PCI)** — append-only `audit_log` table (migration `0017`) recording
+  who-did-what-when for state-changing actions. A best-effort `recordAudit` helper
+  (never throws — an audit failure must not fail the audited action) is called at the
+  web-API boundary, where the actor is known: declare / severity / update /
+  resolve-request / resolve-confirm, attributed to `web:<user>`. Session-gated
+  `GET /api/audit` + a nav Audit page (actor names resolved, human action labels,
+  target id, source badge). One of the two PCI drivers from the build brief (SSO is
+  the other, still blocked on IdP). Slack-interactivity + system/cron actors can be
+  instrumented at those boundaries later with no schema change.
 - ✅ **Structured post-incident editor** — the post-mortem editor was already
   sectioned (Summary / Impact / Root cause / Contributing factors + action items);
   added per-section static help text, an embedded read-only incident timeline under
