@@ -65,10 +65,10 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
   gated routes (`POST /api/incidents/:id/jira`, `.../jira/link`), audited; links
   surfaced on `/api/status` + a Jira block in the incident-detail Properties rail.
   _(PR: feat/jira-zendesk-create.)_
-- [ ] Zendesk create-from-incident (OUTBOUND) — DEFERRED as its own slice: needs a
-  new Zendesk WRITE client (today Zendesk is inbound-only, webhook→alert). The
-  incident_external_links table + UI already generalise to `provider='zendesk'`, so
-  it's an additive follow-up, not a redesign.
+- [~] Zendesk create-from-incident (OUTBOUND) — OUT OF SCOPE (Den, 2026-09-08).
+  Den doesn't want a ticket per incident. The real/natural direction is the
+  REVERSE — a Zendesk ticket spawns an incident — which is ALREADY BUILT (webhook
+  → alert → human promotes, `src/oncall/zendesk.ts`). No outbound write client.
 - [x] MCP per-incident tools — `get_incident` / `get_incident_timeline` /
   `get_draft_report_data` added to the MCP connector, backed by a reusable
   `src/incidents/read.ts` (+ numeric `deriveDurationsSeconds`). Lets an agent drill
