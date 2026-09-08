@@ -18,6 +18,7 @@ export const NAV: NavItem[] = [
   { path: "/follow-ups", label: "Follow-ups" },
   { path: "/insights", label: "Insights" },
   { path: "/teams", label: "Teams" },
+  { path: "/audit", label: "Audit" },
 ];
 
 /** True when `nav` should be highlighted for the current `path`. */

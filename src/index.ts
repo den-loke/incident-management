@@ -17,6 +17,7 @@ import {
 } from "./incidents/commands";
 import { requestResolve, confirmResolve } from "./incidents/jointResolve";
 import { setSeverity } from "./incidents/severity";
+import { recordAudit, listAudit } from "./audit/log";
 import {
   INCIDENT_STATUSES,
   isIncidentSeverity,
@@ -482,6 +483,13 @@ export default {
       const severity = isIncidentSeverity(body?.severity) ? body.severity : undefined;
       const routingPath = isRoutingPath(body?.routing_path) ? body.routing_path : undefined;
       const result = await declareIncident(env, name, note, severity, routingPath);
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.declare",
+        target_type: "incident",
+        target_id: result.incidentId,
+        detail: { name, severity: severity ?? null, routing_path: routingPath ?? null },
+      });
       return json(result, 201);
     }
 
@@ -494,6 +502,15 @@ export default {
         return json({ error: "invalid_severity" }, 400);
       }
       const ok = await setSeverity(env, decodeURIComponent(severityMatch[1]), body.severity);
+      if (ok) {
+        await recordAudit(env, {
+          actor: `web:${session.user_id}`,
+          action: "incident.severity.set",
+          target_type: "incident",
+          target_id: decodeURIComponent(severityMatch[1]),
+          detail: { severity: body.severity },
+        });
+      }
       return ok ? json({ ok: true }) : json({ error: "not_found" }, 404);
     }
 
@@ -506,6 +523,13 @@ export default {
       if (!text) return json({ error: "body_required" }, 400);
       const status = isIncidentStatus(body?.status) ? body.status : undefined;
       await postIncidentUpdate(env, decodeURIComponent(updateMatch[1]), text, status);
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.update.post",
+        target_type: "incident",
+        target_id: decodeURIComponent(updateMatch[1]),
+        detail: { status: status ?? null },
+      });
       return json({ ok: true });
     }
 
@@ -525,6 +549,12 @@ export default {
         `web:${session.user_id}`,
         note,
       );
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.resolve.request",
+        target_type: "incident",
+        target_id: incidentId,
+      });
       return json(req);
     }
 
@@ -543,6 +573,12 @@ export default {
         const status = outcome.reason === "same_person" ? 409 : 404;
         return json({ error: outcome.reason }, status);
       }
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.resolve.confirm",
+        target_type: "incident",
+        target_id: decodeURIComponent(resolveConfirmMatch[1]),
+      });
       return json({ ok: true });
     }
 
@@ -564,7 +600,16 @@ export default {
       return json(report);
     }
 
-    // --- Insights dashboards (session-gated). GET /api/insights?period=7d|30d|90d|all ---
+    // --- Audit log (session-gated). GET /api/audit?target=<id>&limit=<n> ---
+    if (request.method === "GET" && url.pathname === "/api/audit") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const targetId = url.searchParams.get("target") ?? undefined;
+      const limitRaw = Number(url.searchParams.get("limit"));
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
+      const entries = await listAudit(env, { targetId, limit });
+      return json({ entries });
+    }
     if (request.method === "GET" && url.pathname === "/api/insights") {
       const session = await getSession(request, env);
       if (!session) return json({ error: "unauthorized" }, 401);

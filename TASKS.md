@@ -37,8 +37,14 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
 
 ## Build-brief items (still open / blocked)
 
+- [x] **Audit log (PCI)** — append-only `audit_log` table (migration `0017`) + a
+  best-effort `recordAudit` helper. Instrumented at the web-API boundary (where the
+  actor is known) for declare / severity / update / resolve-request / resolve-confirm,
+  attributed to `web:<user>`. Session-gated `GET /api/audit` + a nav-integrated Audit
+  page (actor names resolved, action labels, target, source badge).
+  _(PR: feat/audit-log. Slack-interactivity + system/cron actors can be layered on later
+  at those boundaries without schema change.)_
 - [ ] Stakeholder-waiting reminders (cron vs `last_updated_at` — now that column exists)
-- [ ] Audit log (PCI)
 - [ ] SSO deprovisioning — BLOCKED on which IdP
 - [ ] Status-page email/SMS subscriptions
 - [ ] Codified decision flow — BLOCKED on criteria

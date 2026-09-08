@@ -3,6 +3,7 @@ import { StatusPageView } from "@/pages/StatusPageView";
 import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
 import { EscalationTimeline } from "@/components/OnCallSection";
 import { PostmortemSection } from "@/components/PostmortemSection";
+import { AuditSection } from "@/components/AuditSection";
 import { LoginScreen } from "@/components/LoginScreen";
 import {
   allOperational,
@@ -48,6 +49,27 @@ export const IncidentDetailResolved: StoryObj<typeof IncidentDetailPage> = {
       <IncidentDetailPage id="inc_resolved" data={activeIncidentState} onChange={() => {}} />
     </div>
   ),
+};
+
+// Audit log — append-only who-did-what, actor names resolved from user_names.
+export const AuditLog: StoryObj<typeof AuditSection> = {
+  name: "AuditLog",
+  render: () => {
+    const entries = [
+      { id: "a1", at: "2026-09-02T04:44:00Z", actor: "web:U_BOB", action: "incident.resolve.confirm", target_type: "incident", target_id: "INC-42", detail: null, source: "web" },
+      { id: "a2", at: "2026-09-02T04:41:00Z", actor: "web:U_ALICE", action: "incident.resolve.request", target_type: "incident", target_id: "INC-42", detail: null, source: "web" },
+      { id: "a3", at: "2026-09-02T04:35:00Z", actor: "web:U_ALICE", action: "incident.severity.set", target_type: "incident", target_id: "INC-42", detail: { severity: "sev1" }, source: "web" },
+      { id: "a4", at: "2026-09-02T04:30:00Z", actor: "web:U_ALICE", action: "incident.declare", target_type: "incident", target_id: "INC-42", detail: null, source: "web" },
+    ];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).fetch = async () =>
+      new Response(JSON.stringify({ entries }), { headers: { "content-type": "application/json" } });
+    return (
+      <div className="max-w-2xl p-4">
+        <AuditSection names={{ U_ALICE: "Alice Chen", U_BOB: "Bob Ng" }} />
+      </div>
+    );
+  },
 };
 
 // Post-mortem editor — fixed sections with per-section help text + embedded
