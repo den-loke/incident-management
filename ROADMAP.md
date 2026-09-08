@@ -34,6 +34,14 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Structured post-incident editor** — the post-mortem editor was already
+  sectioned (Summary / Impact / Root cause / Contributing factors + action items);
+  added per-section static help text, an embedded read-only incident timeline under
+  Summary, and action-item guidance — incident.io's "structured editor with
+  per-section guidance" shape, hard-coded (no section builder). NOTE: reshaping the
+  DB-backed section SET to incident.io's exact names (Contributors / Mitigators /
+  Learnings-and-risks) is deferred — it would churn the schema, the AI drafter
+  contract, and Jira/Insights, so it's a separate decision, not this editor upgrade.
 - ✅ **Notification delivery status** — migration `0016` adds `delivery_status`
   (delivered / failed / pending) to `oncall_escalations`. The notifier previously
   fired-and-forgot — a failed Slack post produced no row, a failed Twilio hop was

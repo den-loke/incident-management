@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { StatusPageView } from "@/pages/StatusPageView";
 import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
 import { EscalationTimeline } from "@/components/OnCallSection";
+import { PostmortemSection } from "@/components/PostmortemSection";
 import { LoginScreen } from "@/components/LoginScreen";
 import {
   allOperational,
@@ -47,6 +48,36 @@ export const IncidentDetailResolved: StoryObj<typeof IncidentDetailPage> = {
       <IncidentDetailPage id="inc_resolved" data={activeIncidentState} onChange={() => {}} />
     </div>
   ),
+};
+
+// Post-mortem editor — fixed sections with per-section help text + embedded
+// timeline. Stubs fetch so the self-fetching section renders a fixture draft.
+export const PostmortemEditor: StoryObj<typeof PostmortemSection> = {
+  name: "PostmortemEditor",
+  render: () => {
+    const draft = {
+      id: "pm_1",
+      incident_id: "inc_resolved",
+      status: "draft",
+      summary: "Webhook delivery latency was elevated for ~45 minutes due to a backed-up queue.",
+      impact: "Partner webhook callbacks delayed up to 12 minutes; no data lost.",
+      root_cause: "A slow consumer held connections open, starving the delivery pool.",
+      contributing_factors: "Alerting fired late; the pool size had no headroom. Learning: add pool saturation alerts.",
+      action_items: [
+        { id: "ai_1", description: "Add pool-saturation alert", owner: null, done: false, jira_key: null },
+        { id: "ai_2", description: "Raise delivery pool size + backpressure", owner: null, done: true, jira_key: "OPS-321" },
+      ],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).fetch = async () =>
+      new Response(JSON.stringify(draft), { headers: { "content-type": "application/json" } });
+    const timeline = activeIncidentState.incidents.find((i) => i.id === "inc_resolved")!.updates;
+    return (
+      <div className="max-w-2xl p-4">
+        <PostmortemSection incidentId="inc_resolved" timeline={timeline} />
+      </div>
+    );
+  },
 };
 
 // Escalation timeline — grouped vertical sequence per alert with gap markers.

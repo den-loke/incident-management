@@ -23,9 +23,17 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
   to `oncall_escalations`; the notifier now REPORTS failures (Slack/Twilio) instead
   of swallowing them, so a failed send persists a `failed` row. Surfaced in the
   escalation timeline (Delivered / Failed badge) + the open-alert trail.
-  _(PR: feat/notification-delivery-status — closes the only new-data gap.)_
-- [ ] **#5 Structured post-incident editor** — fixed sections. _Next up — likely
-  the last screenshot-derived slice._
+  _(Shipped — PR #66 merged to main.)_
+- [x] **#5 Structured post-incident editor** — the editor was already sectioned
+  (Summary / Impact / Root cause / Contributing factors + action items). Added
+  per-section help text, an embedded read-only incident timeline under Summary, and
+  action-item guidance — the incident.io "structured editor with per-section
+  guidance" shape, hard-coded (no section builder).
+  _(PR: feat/structured-postmortem.)_
+  _OPEN DECISION: whether to also RENAME/RESHAPE the DB-backed sections to
+  incident.io's exact set (Contributors / Mitigators / Learnings-and-risks). That
+  is a larger change — it churns the schema AND the AI drafter's output contract
+  AND Jira/Insights plumbing — so it's flagged for Den rather than done here._
 
 ## Build-brief items (still open / blocked)
 

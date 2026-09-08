@@ -5,15 +5,28 @@ import { Input, Textarea } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
 import * as api from "@/lib/api";
 import type { Postmortem } from "@/lib/api";
+import type { IncidentUpdate } from "@/types";
+import { fmt } from "@/components/incidentUi";
+import { renderMentions } from "@/lib/utils";
 
-const FIELDS: { key: keyof api.PostmortemEdit; label: string }[] = [
-  { key: "summary", label: "Summary" },
-  { key: "impact", label: "Impact" },
-  { key: "root_cause", label: "Root cause" },
-  { key: "contributing_factors", label: "Contributing factors" },
+// Fixed post-incident sections with static per-section guidance (single-tenant:
+// hard-coded, NOT a section builder). The AI draft populates them; a human edits
+// per section. Help text mirrors incident.io's inline prompts.
+const FIELDS: { key: keyof api.PostmortemEdit; label: string; help: string }[] = [
+  { key: "summary", label: "Summary", help: "What happened, in a few sentences a stakeholder can read. The timeline below is the detailed record." },
+  { key: "impact", label: "Impact", help: "Who and what was affected — customers, systems, duration, scope." },
+  { key: "root_cause", label: "Root cause", help: "The underlying cause. What actually broke, and why it broke now." },
+  { key: "contributing_factors", label: "Contributing factors & learnings", help: "What made it worse or harder to resolve, and what we take away — including residual risk." },
 ];
 
-export function PostmortemSection({ incidentId }: { incidentId: string }) {
+export function PostmortemSection({
+  incidentId,
+  timeline,
+}: {
+  incidentId: string;
+  /** Incident updates, embedded read-only beneath the Summary section. */
+  timeline?: IncidentUpdate[];
+}) {
   const [pm, setPm] = useState<Postmortem | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -85,14 +98,31 @@ export function PostmortemSection({ incidentId }: { incidentId: string }) {
       {FIELDS.map((f) => (
         <div key={f.key} className="space-y-1">
           <div className="text-xs font-medium text-muted-foreground">{f.label}</div>
+          <p className="text-[11px] leading-snug text-muted-foreground/80">{f.help}</p>
           {editing ? (
             <Textarea
               value={edit![f.key] as string}
               onChange={(e) => setEdit({ ...edit!, [f.key]: e.target.value })}
             />
           ) : (
-            <p className="text-sm">{(pm[f.key] as string) || "—"}</p>
+            <p className="text-sm whitespace-pre-wrap">{(pm[f.key] as string) || "—"}</p>
           )}
+          {f.key === "summary" && timeline && timeline.length > 0 ? (
+            <details className="mt-1 rounded-md bg-muted/40 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                Incident timeline ({timeline.length})
+              </summary>
+              <ol className="mt-2 space-y-1.5">
+                {timeline.map((u) => (
+                  <li key={u.id} className="text-xs">
+                    <time className="text-muted-foreground">{fmt(u.created_at)}</time>{" "}
+                    <span className="text-muted-foreground">· {u.status}</span>
+                    <div className="text-foreground">{renderMentions(u.body)}</div>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          ) : null}
         </div>
       ))}
 
@@ -100,6 +130,9 @@ export function PostmortemSection({ incidentId }: { incidentId: string }) {
 
       <div className="space-y-2">
         <div className="text-xs font-medium text-muted-foreground">Action items</div>
+        <p className="text-[11px] leading-snug text-muted-foreground/80">
+          Concrete follow-ups to prevent recurrence or reduce impact. Each can be exported to Jira.
+        </p>
         {editing ? (
           <ActionItemEditor
             items={edit!.action_items}
