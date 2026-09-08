@@ -236,7 +236,7 @@ export function IncidentDetailPage({
                 <Card>
                   <CardContent className="pt-6">
                     <PostIncidentFlowSection incidentId={incident.id} />
-                    <PostmortemSection incidentId={incident.id} />
+                    <PostmortemSection incidentId={incident.id} timeline={incident.updates} />
                   </CardContent>
                 </Card>
               )}
