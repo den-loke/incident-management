@@ -79,3 +79,36 @@ export class FakeIssueTracker implements IssueTracker {
     return { key, url: `https://jira.example/browse/${key}` };
   }
 }
+
+// --- Shared tracker builder (used by post-mortem export AND incident-level
+// create/link) so the JIRA_* config plumbing lives in one place. ---
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EnvLike = Record<string, any>;
+
+let trackerOverride: ((env: EnvLike) => IssueTracker | null) | undefined;
+/** Test seam: force a tracker (or null) regardless of env. */
+export function __setIssueTracker(f: ((env: EnvLike) => IssueTracker | null) | undefined): void {
+  trackerOverride = f;
+}
+
+/** Build a Jira tracker from env, or null when Jira is unconfigured. */
+export function buildIssueTracker(env: EnvLike): IssueTracker | null {
+  if (trackerOverride) return trackerOverride(env);
+  if (env.JIRA_BASE_URL && env.JIRA_EMAIL && env.JIRA_API_TOKEN && env.JIRA_PROJECT_KEY) {
+    return new JiraClient({
+      baseUrl: env.JIRA_BASE_URL,
+      email: env.JIRA_EMAIL,
+      apiToken: env.JIRA_API_TOKEN,
+      projectKey: env.JIRA_PROJECT_KEY,
+      issueType: env.JIRA_ISSUE_TYPE,
+    });
+  }
+  return null;
+}
+
+/** Browse URL for a Jira key, given the configured base (or a fallback). */
+export function jiraBrowseUrl(env: EnvLike, key: string): string {
+  const base = (env.JIRA_BASE_URL ?? "").replace(/\/+$/, "");
+  return base ? `${base}/browse/${key}` : `https://jira/browse/${key}`;
+}

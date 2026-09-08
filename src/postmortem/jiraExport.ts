@@ -8,27 +8,15 @@ import type { Env } from "../env";
 import { D1Db } from "../status/d1";
 import { PostmortemStore } from "./store";
 import type { IssueTracker } from "../clients/jira";
-import { JiraClient } from "../clients/jira";
+import { buildIssueTracker, __setIssueTracker } from "../clients/jira";
 
-// Test seam.
-let trackerOverride: ((env: Env) => IssueTracker | null) | undefined;
-export function __setIssueTracker(f: ((env: Env) => IssueTracker | null) | undefined): void {
-  trackerOverride = f;
-}
+// Re-export the shared test seam so existing importers (tests) keep working —
+// there is ONE override variable now, in ../clients/jira.
+export { __setIssueTracker };
 
 /** Build the tracker from env, or null when Jira is not configured. */
 function buildTracker(env: Env): IssueTracker | null {
-  if (trackerOverride) return trackerOverride(env);
-  if (env.JIRA_BASE_URL && env.JIRA_EMAIL && env.JIRA_API_TOKEN && env.JIRA_PROJECT_KEY) {
-    return new JiraClient({
-      baseUrl: env.JIRA_BASE_URL,
-      email: env.JIRA_EMAIL,
-      apiToken: env.JIRA_API_TOKEN,
-      projectKey: env.JIRA_PROJECT_KEY,
-      issueType: env.JIRA_ISSUE_TYPE,
-    });
-  }
-  return null;
+  return buildIssueTracker(env);
 }
 
 export interface ExportResult {

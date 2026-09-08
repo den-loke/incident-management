@@ -34,6 +34,15 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **Jira create-from-incident + link-existing** — Jira was export-only (action
+  items on post-mortem publish). Now the INCIDENT itself can get a Jira issue:
+  `incident_external_links` (migration `0019`, generalises to other providers),
+  `createJiraForIncident` (creates + links) and `linkExistingJira` (attach an
+  existing key, idempotent via UNIQUE). Shares the `JIRA_*` config via a single
+  `buildIssueTracker` seam. Session-gated `POST /api/incidents/:id/jira` +
+  `.../jira/link` (audited); links surfaced on `/api/status` and as a Jira block in
+  the incident-detail Properties rail. Zendesk OUTBOUND create is deferred (needs a
+  new write client; the table/UI already generalise to it).
 - ✅ **Stakeholder-waiting reminders** — build-brief pain point #1 (stakeholders left
   waiting). A cron sweep (piggybacks the existing 1-min tick, no new trigger) nudges
   the incident lead in the incident's Slack channel when an OPEN incident's

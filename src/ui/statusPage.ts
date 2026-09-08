@@ -10,6 +10,7 @@ import type { Session } from "../auth/session";
 import { RoleStore } from "../roles/store";
 import type { RoleAssignment } from "../roles/types";
 import { listMaintenance, type MaintenanceWindow } from "../maintenance/service";
+import { listIncidentLinks, type ExternalLink } from "../incidents/externalLinks";
 
 export interface PendingResolution {
   requested_by: string;
@@ -23,6 +24,8 @@ export interface IncidentView extends Incident {
   pending_resolution: PendingResolution | null;
   /** Slack channel id for this incident, if a channel was created. */
   channel: string | null;
+  /** External record links (Jira today), newest first. */
+  external_links: ExternalLink[];
 }
 
 export interface StatusPayload {
@@ -69,6 +72,7 @@ export async function loadStatus(
       roles,
       pending_resolution: pending ?? null,
       channel: chan?.channel ?? null,
+      external_links: await listIncidentLinks(env, inc.id),
     });
   }
 

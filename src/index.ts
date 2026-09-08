@@ -18,6 +18,7 @@ import {
 import { requestResolve, confirmResolve } from "./incidents/jointResolve";
 import { setSeverity } from "./incidents/severity";
 import { buildDecisionFlow } from "./incidents/decisionFlow";
+import { createJiraForIncident, linkExistingJira } from "./incidents/externalLinks";
 import { recordAudit, listAudit } from "./audit/log";
 import {
   INCIDENT_STATUSES,
@@ -581,6 +582,45 @@ export default {
         target_id: decodeURIComponent(resolveConfirmMatch[1]),
       });
       return json({ ok: true });
+    }
+
+    // --- Jira: create-from-incident + link-existing (session-gated). ---
+    const jiraCreateMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/jira$/);
+    if (request.method === "POST" && jiraCreateMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const incidentId = decodeURIComponent(jiraCreateMatch[1]);
+      const outcome = await createJiraForIncident(env, incidentId, `web:${session.user_id}`);
+      if (outcome.result === "not_found") return json({ error: "not_found" }, 404);
+      if (outcome.result === "unconfigured") return json({ error: "jira_unconfigured" }, 409);
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.jira.create",
+        target_type: "incident",
+        target_id: incidentId,
+        detail: { key: outcome.link.external_key },
+      });
+      return json(outcome.link, 201);
+    }
+
+    const jiraLinkMatch = url.pathname.match(/^\/api\/incidents\/([^/]+)\/jira\/link$/);
+    if (request.method === "POST" && jiraLinkMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const incidentId = decodeURIComponent(jiraLinkMatch[1]);
+      const body = await readJson(request);
+      const key = typeof body?.key === "string" ? body.key : "";
+      const outcome = await linkExistingJira(env, incidentId, key, `web:${session.user_id}`);
+      if (outcome.result === "not_found") return json({ error: "not_found" }, 404);
+      if (outcome.result === "invalid_key") return json({ error: "invalid_key" }, 400);
+      await recordAudit(env, {
+        actor: `web:${session.user_id}`,
+        action: "incident.jira.link",
+        target_type: "incident",
+        target_id: incidentId,
+        detail: { key: outcome.link.external_key },
+      });
+      return json(outcome.link, 201);
     }
 
     // --- Reporting (session-gated). GET /api/reports?period=7d|30d|90d|all&format=csv ---

@@ -50,6 +50,16 @@ export interface IncidentUpdate {
   created_at: string;
 }
 
+export interface ExternalLink {
+  id: string;
+  incident_id: string;
+  provider: string;
+  external_key: string;
+  url: string;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface Incident {
   id: string;
   name: string;
@@ -65,6 +75,7 @@ export interface Incident {
   roles: RoleAssignment[];
   pending_resolution: PendingResolution | null;
   channel: string | null;
+  external_links?: ExternalLink[];
 }
 
 export type IncidentRole = "engineering_lead" | "customer_support_lead";
