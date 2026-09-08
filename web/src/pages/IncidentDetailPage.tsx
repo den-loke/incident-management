@@ -12,7 +12,10 @@ import { PostmortemSection } from "@/components/PostmortemSection";
 import { PostIncidentFlowSection } from "@/components/PostIncidentFlowSection";
 import { Link } from "@/lib/router";
 import { uname, renderMentions } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form";
+import * as api from "@/lib/api";
+import { useState, type ReactNode } from "react";
 import {
   ROLE_LABEL,
   SEVERITY_LABEL,
@@ -49,12 +52,73 @@ function Initials({ name }: { name: string }) {
   );
 }
 
+function JiraLinks({ incident, onChange }: { incident: Incident; onChange: () => void }) {
+  const links = incident.external_links ?? [];
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [showLink, setShowLink] = useState(false);
+
+  async function run(fn: () => Promise<void>) {
+    setBusy(true);
+    setErr(null);
+    try {
+      await fn();
+      setKey("");
+      setShowLink(false);
+      onChange();
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-1.5 text-sm">
+      <div className="text-xs font-medium text-muted-foreground">Jira</div>
+      {links.length > 0 ? (
+        <ul className="space-y-0.5">
+          {links.map((l) => (
+            <li key={l.id}>
+              <a href={l.url} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:no-underline">
+                {l.external_key} ↗
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">No Jira issue linked.</p>
+      )}
+      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => run(() => api.createIncidentJira(incident.id))}>
+          {busy ? "…" : "Create Jira issue"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => setShowLink((s) => !s)}>
+          Link existing
+        </Button>
+      </div>
+      {showLink ? (
+        <div className="flex items-center gap-2 pt-1">
+          <Input value={key} placeholder="INC-42" onChange={(e) => setKey(e.target.value)} />
+          <Button size="sm" disabled={busy || !key.trim()} onClick={() => run(() => api.linkIncidentJira(incident.id, key))}>
+            Link
+          </Button>
+        </div>
+      ) : null}
+      {err ? <p className="text-xs text-muted-foreground">Error: {err}</p> : null}
+    </div>
+  );
+}
+
 function PropertiesRail({
   incident,
   names,
+  onChange,
 }: {
   incident: Incident;
   names?: Record<string, string>;
+  onChange: () => void;
 }) {
   const d = deriveDurations(incident);
   const byRole = new Map(incident.roles.map((r) => [r.role, r.slack_user_id]));
@@ -125,6 +189,8 @@ function PropertiesRail({
             </div>
           </>
         ) : null}
+        <Separator />
+        <JiraLinks incident={incident} onChange={onChange} />
       </CardContent>
     </Card>
   );
@@ -241,7 +307,7 @@ export function IncidentDetailPage({
                 </Card>
               )}
             </div>
-            <PropertiesRail incident={incident} names={data.user_names} />
+            <PropertiesRail incident={incident} names={data.user_names} onChange={onChange} />
           </div>
         </>
       )}

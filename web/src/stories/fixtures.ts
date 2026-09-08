@@ -69,6 +69,17 @@ export const resolvedIncident: Incident = {
   roles: [],
   pending_resolution: null,
   channel: "C0DEMO123",
+  external_links: [
+    {
+      id: "lnk_1",
+      incident_id: "inc_resolved",
+      provider: "jira",
+      external_key: "OPS-321",
+      url: "https://jira.example/browse/OPS-321",
+      created_by: "web:U_ALICE",
+      created_at: "2026-09-01T22:05:00Z",
+    },
+  ],
   updates: [
     {
       id: "r2",

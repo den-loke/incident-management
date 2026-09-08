@@ -41,6 +41,13 @@ export function declareIncident(
   return postJson("/api/incidents", { name, body, severity, routing_path: routingPath });
 }
 
+export function createIncidentJira(incidentId: string): Promise<void> {
+  return postJson(`/api/incidents/${encodeURIComponent(incidentId)}/jira`, {});
+}
+export function linkIncidentJira(incidentId: string, key: string): Promise<void> {
+  return postJson(`/api/incidents/${encodeURIComponent(incidentId)}/jira/link`, { key });
+}
+
 export function setSeverity(incidentId: string, severity: string): Promise<void> {
   return fetch(`/api/incidents/${encodeURIComponent(incidentId)}/severity`, {
     method: "PUT",
