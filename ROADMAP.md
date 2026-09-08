@@ -41,8 +41,9 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   existing key, idempotent via UNIQUE). Shares the `JIRA_*` config via a single
   `buildIssueTracker` seam. Session-gated `POST /api/incidents/:id/jira` +
   `.../jira/link` (audited); links surfaced on `/api/status` and as a Jira block in
-  the incident-detail Properties rail. Zendesk OUTBOUND create is deferred (needs a
-  new write client; the table/UI already generalise to it).
+  the incident-detail Properties rail. Zendesk OUTBOUND create is OUT OF SCOPE
+  (Den): the natural flow is the reverse — a Zendesk ticket spawns an incident,
+  already built inbound (webhook → alert → promote).
 - ✅ **Stakeholder-waiting reminders** — build-brief pain point #1 (stakeholders left
   waiting). A cron sweep (piggybacks the existing 1-min tick, no new trigger) nudges
   the incident lead in the incident's Slack channel when an OPEN incident's
