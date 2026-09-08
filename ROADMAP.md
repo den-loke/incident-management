@@ -34,7 +34,6 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
-
 - ✅ **Cmd+K command palette (navigation + quick actions)** — a dependency-free
   ⌘K / Ctrl+K overlay (`web/src/components/CommandPalette.tsx`) matching the
   zero-dep hash router. Two tiers: **navigation** (every left-nav page from the
@@ -47,6 +46,15 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   Discoverable via a header "Search ⌘K" button. Fixed command set, no configurable
   palette (stance). Tier 3 (agentic "Ask" over the MCP tool surface) is a separate
   future PR. Frontend-only — no server/D1 change; storybook screenshot-verified.
+- ✅ **Full incident-channel conversation capture** — Den: "everything discussed in
+  the incident channel should be captured." Previously plain chat was routed but
+  NOT persisted (the DO's `message` handler no-op'd; only 15-min AI summaries made
+  the timeline). Now migration `0021` adds `incident_messages` (ON DELETE CASCADE)
+  — a unified transcript of human messages AND the bot's own posts. The DO persists
+  every inbound human message and records each outbound post via `postAndRecord`.
+  The post-mortem draft reads the FULL transcript (not just structured updates),
+  and the incident-detail page shows a Conversation block. Fixes report-fidelity
+  pain point #2. Slack stays the system of record; this is our durable mirror.
 - ✅ **Jira create-from-incident + link-existing** — Jira was export-only (action
   items on post-mortem publish). Now the INCIDENT itself can get a Jira issue:
   `incident_external_links` (migration `0019`, generalises to other providers),

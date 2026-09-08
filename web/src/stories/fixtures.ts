@@ -80,6 +80,12 @@ export const resolvedIncident: Incident = {
       created_at: "2026-09-01T22:05:00Z",
     },
   ],
+  messages: [
+    { id: "m1", incident_id: "inc_resolved", kind: "bot", slack_user_id: null, text: ":rotating_light: Webhook latency elevated", ts: "2026-09-01T22:00:00Z", created_at: "2026-09-01T22:00:00Z" },
+    { id: "m2", incident_id: "inc_resolved", kind: "human", slack_user_id: "U_ALICE", text: "queue's backed up, looking at the consumer", ts: "2026-09-01T22:03:00Z", created_at: "2026-09-01T22:03:00Z" },
+    { id: "m3", incident_id: "inc_resolved", kind: "human", slack_user_id: "U_BOB", text: "pool was saturated — bumping size now", ts: "2026-09-01T22:20:00Z", created_at: "2026-09-01T22:20:00Z" },
+    { id: "m4", incident_id: "inc_resolved", kind: "bot", slack_user_id: null, text: ":white_check_mark: Backlog cleared, latency normal. Resolved.", ts: "2026-09-01T22:45:00Z", created_at: "2026-09-01T22:45:00Z" },
+  ],
   updates: [
     {
       id: "r2",
@@ -107,7 +113,7 @@ export function response(
     components,
     incidents,
     maintenance: [],
-    user_names: { U_ALICE: "Alice Chen", U_DEMO: "Den" },
+    user_names: { U_ALICE: "Alice Chen", U_BOB: "Bob Ng", U_DEMO: "Den" },
   };
 }
 

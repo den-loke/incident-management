@@ -60,6 +60,16 @@ export interface ExternalLink {
   created_at: string;
 }
 
+export interface IncidentMessage {
+  id: string;
+  incident_id: string;
+  kind: "human" | "bot";
+  slack_user_id: string | null;
+  text: string;
+  ts: string;
+  created_at: string;
+}
+
 export interface Incident {
   id: string;
   name: string;
@@ -76,6 +86,7 @@ export interface Incident {
   pending_resolution: PendingResolution | null;
   channel: string | null;
   external_links?: ExternalLink[];
+  messages?: IncidentMessage[];
 }
 
 export type IncidentRole = "engineering_lead" | "customer_support_lead";

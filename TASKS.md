@@ -3,6 +3,14 @@
 Working tracker for the goal-driven build loop. Ordered by the NORTH_STAR frontier.
 See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
 
+## Post-deploy capability gaps
+
+- [x] Full incident-channel conversation capture — DONE (Den, 2026-09-08: "everything
+  discussed should be captured"). Migration `0020` `incident_messages` (human + bot,
+  ON DELETE CASCADE); DO persists inbound human messages + records its own posts via
+  `postAndRecord`; post-mortem draft reads the full transcript; incident-detail
+  Conversation block. _(PR: feat/message-capture.)_
+
 ## Screenshot-derived gaps (presentation)
 
 - [x] **#2 Lifecycle timestamps + derived durations** — migration `0015` adds
