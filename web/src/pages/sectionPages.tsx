@@ -5,6 +5,7 @@ import { ReportPanel } from "@/components/ReportPanel";
 import { TeamsSection } from "@/components/TeamsSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
 import { AuditSection } from "@/components/AuditSection";
+import { DecisionGuideSection } from "@/components/DecisionGuideSection";
 import type { StatusResponse } from "@/types";
 
 // These sections are self-fetching (own /api call), so the pages are thin.
@@ -64,6 +65,18 @@ export function AuditPage({ data }: { data: StatusResponse }) {
         Append-only record of state-changing actions — who did what, and when.
       </p>
       <AuditSection names={data.user_names} />
+    </div>
+  );
+}
+
+export function DecisionGuidePage() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold tracking-tight">Decision guide</h1>
+      <p className="text-sm text-muted-foreground">
+        How we classify and route incidents at LOKE — fixed criteria, not a config surface.
+      </p>
+      <DecisionGuideSection />
     </div>
   );
 }

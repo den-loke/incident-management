@@ -318,6 +318,26 @@ export function fetchAudit(limit = 100): Promise<AuditEntry[]> {
   return getList(`/api/audit?limit=${limit}`, "entries");
 }
 
+export interface DecisionFlow {
+  severity: {
+    severity: string;
+    label: string;
+    headline: string;
+    includes: string[];
+    excludes: string[];
+  }[];
+  routing: { path: string; label: string; headline: string; detail: string }[];
+  escalation_triggers: string[];
+  external_comms_threshold: string[];
+}
+export function fetchDecisionFlow(): Promise<DecisionFlow> {
+  return fetch("/api/decision-flow", { credentials: "same-origin", headers: { accept: "application/json" } }).then((r) => {
+    if (r.status === 401) throw new UnauthorizedError("not signed in");
+    if (!r.ok) throw new Error(`request failed (${r.status})`);
+    return r.json() as Promise<DecisionFlow>;
+  });
+}
+
 export interface TeamsResponse {
   teams: import("@/types").Team[];
   stakeholder_optins: string[];

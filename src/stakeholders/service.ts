@@ -29,6 +29,7 @@ import {
   type RoutingPath,
 } from "../status/types";
 import { declareIncident } from "../incidents/commands";
+import { SEVERITY_CRITERIA, ROUTING_CRITERIA } from "../incidents/decisionFlow";
 
 // Test/bypass seam mirroring the roles service.
 let slackOverride: ((env: Env) => SlackClient) | undefined;
@@ -345,6 +346,15 @@ export function declareModalView(): unknown {
         },
       },
       {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: SEVERITY_CRITERIA.map((c) => `*${c.label}:* ${c.headline}`).join("\n"),
+          },
+        ],
+      },
+      {
         type: "input",
         block_id: DECLARE_PATH_BLOCK,
         label: { type: "plain_text", text: "Routing path" },
@@ -360,6 +370,15 @@ export function declareModalView(): unknown {
             value: p,
           })),
         },
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: ROUTING_CRITERIA.map((c) => `*${c.label}:* ${c.headline}`).join("\n"),
+          },
+        ],
       },
     ],
   };

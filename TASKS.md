@@ -47,7 +47,12 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
 - [ ] Stakeholder-waiting reminders — UNBLOCKED (Den, cycle 7): remind when no update for SEV1/SEV2 15m, SEV3 1h; posting ANY update (incl. "no further updates") resets the clock. Cron vs last_updated_at. NEXT BUILD.
 - [~] SSO deprovisioning — OUT OF SCOPE (Den, cycle 7): auth is Sign-in-with-Slack OIDC + team_id allow-list, no separate IdP to deprovision from; Slack-workspace removal is the deprovision path and takes effect at next session check.
 - [ ] Status-page email/SMS subscriptions
-- [ ] Codified decision flow — BLOCKED on criteria
+- [x] Codified decision flow — DONE (criteria from Den, cycle 7). Hard-coded LOKE
+  criteria in `src/incidents/decisionFlow.ts` (single source of truth): severity
+  SEV1/2/3, internal-vs-external routing, mid-incident escalation triggers, external-
+  comms threshold. Surfaced BOTH as a read-only `/decision-guide` web page AND inline
+  context guidance in the Slack declare modal. `GET /api/decision-flow` (session-gated).
+  _(PR: feat/decision-flow.)_
 - [ ] Jira/Zendesk create-from-incident + link-existing
 - [x] MCP per-incident tools — `get_incident` / `get_incident_timeline` /
   `get_draft_report_data` added to the MCP connector, backed by a reusable
