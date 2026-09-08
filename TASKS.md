@@ -44,9 +44,13 @@ See `NORTH_STAR.md` (frontier) and `ROADMAP.md` (detail) for the why.
   page (actor names resolved, action labels, target, source badge).
   _(PR: feat/audit-log. Slack-interactivity + system/cron actors can be layered on later
   at those boundaries without schema change.)_
-- [ ] Stakeholder-waiting reminders (cron vs `last_updated_at` — now that column exists)
-- [ ] SSO deprovisioning — BLOCKED on which IdP
+- [ ] Stakeholder-waiting reminders — UNBLOCKED (Den, cycle 7): remind when no update for SEV1/SEV2 15m, SEV3 1h; posting ANY update (incl. "no further updates") resets the clock. Cron vs last_updated_at. NEXT BUILD.
+- [~] SSO deprovisioning — OUT OF SCOPE (Den, cycle 7): auth is Sign-in-with-Slack OIDC + team_id allow-list, no separate IdP to deprovision from; Slack-workspace removal is the deprovision path and takes effect at next session check.
 - [ ] Status-page email/SMS subscriptions
 - [ ] Codified decision flow — BLOCKED on criteria
 - [ ] Jira/Zendesk create-from-incident + link-existing
-- [ ] MCP per-incident tools (get_incident / get_incident_timeline / get_draft_report_data)
+- [x] MCP per-incident tools — `get_incident` / `get_incident_timeline` /
+  `get_draft_report_data` added to the MCP connector, backed by a reusable
+  `src/incidents/read.ts` (+ numeric `deriveDurationsSeconds`). Lets an agent drill
+  into ONE incident (detail + timeline + durations + post-mortem) instead of only
+  aggregates. _(PR: feat/mcp-incident-tools.)_

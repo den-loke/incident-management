@@ -16,6 +16,7 @@ import { D1Db } from "../status/d1";
 import { buildReport, periodWindow } from "../reporting/service";
 import { buildInsights } from "../reporting/insights";
 import { listFollowUps, listIncidentHistory } from "../reporting/followups";
+import { getIncidentDetail, getIncidentTimeline, getDraftReportData } from "../incidents/read";
 import type { IncidentSeverity, RoutingPath } from "../status/types";
 
 const PROTOCOL_VERSION = "2024-11-05";
@@ -105,6 +106,54 @@ export const MCP_TOOLS: ToolDef[] = [
           limit: typeof args.limit === "number" ? args.limit : undefined,
         }),
       };
+    },
+  },
+  {
+    name: "get_incident",
+    description:
+      "One incident's full detail by id (e.g. 'INC-42'): status, severity, routing path, lifecycle timestamps, derived durations (total / time-to-identify / time-to-resolve in seconds), Slack channel, and its update timeline.",
+    inputSchema: {
+      type: "object",
+      properties: { incident_id: { type: "string", description: "Incident id, e.g. 'INC-42'." } },
+      required: ["incident_id"],
+    },
+    handler: async (env, args) => {
+      const id = typeof args.incident_id === "string" ? args.incident_id : "";
+      const detail = await getIncidentDetail(env, id);
+      if (!detail) throw new Error(`unknown incident: ${id || "(none)"}`);
+      return detail;
+    },
+  },
+  {
+    name: "get_incident_timeline",
+    description:
+      "Just the chronological update timeline for one incident by id — each entry's body, status, and timestamp. Use when you only need the narrative, not the full record.",
+    inputSchema: {
+      type: "object",
+      properties: { incident_id: { type: "string", description: "Incident id, e.g. 'INC-42'." } },
+      required: ["incident_id"],
+    },
+    handler: async (env, args) => {
+      const id = typeof args.incident_id === "string" ? args.incident_id : "";
+      const timeline = await getIncidentTimeline(env, id);
+      if (!timeline) throw new Error(`unknown incident: ${id || "(none)"}`);
+      return { timeline };
+    },
+  },
+  {
+    name: "get_draft_report_data",
+    description:
+      "Everything needed to draft or write up an incident report: the incident detail + timeline + derived durations, plus the (auto-drafted or human-edited) post-mortem with its Summary/Impact/Root-cause/Contributing-factors sections and action items. Feed this to an agent asked to author a post-incident report.",
+    inputSchema: {
+      type: "object",
+      properties: { incident_id: { type: "string", description: "Incident id, e.g. 'INC-42'." } },
+      required: ["incident_id"],
+    },
+    handler: async (env, args) => {
+      const id = typeof args.incident_id === "string" ? args.incident_id : "";
+      const data = await getDraftReportData(env, id);
+      if (!data) throw new Error(`unknown incident: ${id || "(none)"}`);
+      return data;
     },
   },
 ];

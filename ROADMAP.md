@@ -34,6 +34,12 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+- ✅ **MCP per-incident tools** — the MCP connector was analytics-first (aggregates
+  only). Added three read-only per-incident tools — `get_incident` (detail + timeline
+  + derived durations in seconds), `get_incident_timeline` (just the narrative), and
+  `get_draft_report_data` (detail + timeline + post-mortem, for an agent asked to
+  write up a report). Backed by a reusable `src/incidents/read.ts`. Serves report
+  accuracy: an agent can now drill into ONE incident, not just query aggregates.
 - ✅ **Audit log (PCI)** — append-only `audit_log` table (migration `0017`) recording
   who-did-what-when for state-changing actions. A best-effort `recordAudit` helper
   (never throws — an audit failure must not fail the audited action) is called at the

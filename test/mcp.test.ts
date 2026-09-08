@@ -23,11 +23,19 @@ describe("MCP connector (/mcp)", () => {
     expect(typeof body.result.protocolVersion).toBe("string");
   });
 
-  it("tools/list advertises the four read-only analytics tools", async () => {
+  it("tools/list advertises the analytics + per-incident tools", async () => {
     const res = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
     const body = (await res.json()) as { result: { tools: { name: string }[] } };
     const names = body.result.tools.map((t) => t.name).sort();
-    expect(names).toEqual(["get_insights", "get_report", "list_follow_ups", "list_incidents"]);
+    expect(names).toEqual([
+      "get_draft_report_data",
+      "get_incident",
+      "get_incident_timeline",
+      "get_insights",
+      "get_report",
+      "list_follow_ups",
+      "list_incidents",
+    ]);
   });
 
   it("tools/call get_report returns JSON text content", async () => {
