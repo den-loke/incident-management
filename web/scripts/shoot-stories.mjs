@@ -33,6 +33,7 @@ const STORIES = [
   "pages-statuspage--postmortem-editor",
   "pages-statuspage--audit-log",
   "pages-statuspage--decision-guide",
+  "pages-statuspage--command-palette-story",
 ];
 
 const MIME = {

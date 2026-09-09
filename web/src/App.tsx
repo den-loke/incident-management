@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchStatus, UnauthorizedError } from "@/lib/api";
 import { LoginScreen } from "@/components/LoginScreen";
 import { AppShell } from "@/components/AppShell";
+import { CommandPalette, useCommandPalette } from "@/components/CommandPalette";
+import { DeclareIncidentDialog } from "@/components/IncidentActions";
 import { useRoute, matchRoute } from "@/lib/router";
 import { StatusPageView } from "@/pages/StatusPageView";
 import { IncidentsListPage } from "@/pages/IncidentsListPage";
@@ -55,6 +57,8 @@ function Routed({ data, onChange }: { data: StatusResponse; onChange: () => void
 
 export default function App() {
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [paletteOpen, setPaletteOpen] = useCommandPalette();
+  const [declareOpen, setDeclareOpen] = useState(false);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -89,8 +93,25 @@ export default function App() {
     );
   }
   return (
-    <AppShell viewer={state.data.viewer} onDeclare={load}>
-      <Routed data={state.data} onChange={load} />
-    </AppShell>
+    <>
+      <AppShell
+        viewer={state.data.viewer}
+        onDeclare={load}
+        onOpenPalette={() => setPaletteOpen(true)}
+      >
+        <Routed data={state.data} onChange={load} />
+      </AppShell>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        data={state.data}
+        onDeclare={() => setDeclareOpen(true)}
+      />
+      <DeclareIncidentDialog
+        open={declareOpen}
+        onClose={() => setDeclareOpen(false)}
+        onDone={load}
+      />
+    </>
   );
 }

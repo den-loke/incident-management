@@ -12,8 +12,20 @@ function ErrorLine({ msg }: { msg: string | null }) {
   return <p className="mb-3 text-sm text-muted-foreground">Error: {msg}</p>;
 }
 
-export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = useState(false);
+/**
+ * The Declare-incident form as a CONTROLLED dialog. Both the header button and
+ * the ⌘K command palette drive this same modal (single path), so there is no
+ * duplicated declare form. Callers own the `open` state.
+ */
+export function DeclareIncidentDialog({
+  open,
+  onClose,
+  onDone,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [severity, setSeverity] = useState("sev2");
@@ -21,16 +33,21 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  function reset() {
+    setName("");
+    setBody("");
+    setSeverity("sev2");
+    setRoutingPath("internal");
+    setErr(null);
+  }
+
   async function submit() {
     setBusy(true);
     setErr(null);
     try {
       await api.declareIncident(name.trim(), body.trim() || undefined, severity, routingPath);
-      setOpen(false);
-      setName("");
-      setBody("");
-      setSeverity("sev2");
-      setRoutingPath("internal");
+      reset();
+      onClose();
       onDone();
     } catch (e) {
       setErr(String((e as Error).message));
@@ -40,43 +57,50 @@ export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
   }
 
   return (
+    <Dialog open={open} onClose={() => !busy && onClose()} title="Declare incident">
+      <ErrorLine msg={err} />
+      <div className="space-y-3">
+        <Input
+          autoFocus
+          placeholder="Incident name (e.g. Checkout returning 500s)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Select value={severity} onChange={(e) => setSeverity(e.target.value)}>
+          <option value="sev1">SEV1 · Major</option>
+          <option value="sev2">SEV2 · Partial</option>
+          <option value="sev3">SEV3 · Minor</option>
+        </Select>
+        <Select value={routingPath} onChange={(e) => setRoutingPath(e.target.value)}>
+          <option value="internal">Internal (our systems)</option>
+          <option value="external">External (upstream / partner)</option>
+        </Select>
+        <Textarea
+          placeholder="First update (optional)"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={submit} disabled={busy || !name.trim()}>
+            {busy ? "Declaring…" : "Declare"}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+export function DeclareIncidentButton({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
         Declare incident
       </Button>
-      <Dialog open={open} onClose={() => !busy && setOpen(false)} title="Declare incident">
-        <ErrorLine msg={err} />
-        <div className="space-y-3">
-          <Input
-            autoFocus
-            placeholder="Incident name (e.g. Checkout returning 500s)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Select value={severity} onChange={(e) => setSeverity(e.target.value)}>
-            <option value="sev1">SEV1 · Major</option>
-            <option value="sev2">SEV2 · Partial</option>
-            <option value="sev3">SEV3 · Minor</option>
-          </Select>
-          <Select value={routingPath} onChange={(e) => setRoutingPath(e.target.value)}>
-            <option value="internal">Internal (our systems)</option>
-            <option value="external">External (upstream / partner)</option>
-          </Select>
-          <Textarea
-            placeholder="First update (optional)"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={submit} disabled={busy || !name.trim()}>
-              {busy ? "Declaring…" : "Declare"}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <DeclareIncidentDialog open={open} onClose={() => setOpen(false)} onDone={onDone} />
     </>
   );
 }

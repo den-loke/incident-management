@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { StatusPageView } from "@/pages/StatusPageView";
 import { IncidentDetailPage } from "@/pages/IncidentDetailPage";
 import { EscalationTimeline } from "@/components/OnCallSection";
+import { CommandPalette } from "@/components/CommandPalette";
 import { PostmortemSection } from "@/components/PostmortemSection";
 import { AuditSection } from "@/components/AuditSection";
 import { DecisionGuideSection } from "@/components/DecisionGuideSection";
@@ -137,5 +138,19 @@ export const EscalationTimelineStory: StoryObj<typeof EscalationTimeline> = {
     <div className="max-w-2xl p-4">
       <EscalationTimeline events={escalationEvents} names={escalationNames} />
     </div>
+  ),
+};
+
+// Command palette (⌘K) — navigation + quick actions, rendered open over the
+// active-incident fixture so it shows nav, incidents, and per-incident actions.
+export const CommandPaletteStory: StoryObj<typeof CommandPalette> = {
+  name: "CommandPalette",
+  render: () => (
+    <CommandPalette
+      open
+      onClose={() => {}}
+      data={activeIncidentState}
+      onDeclare={() => {}}
+    />
   ),
 };
