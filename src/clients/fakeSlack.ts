@@ -10,6 +10,8 @@ export class FakeSlackClient implements SlackClient {
   created: string[] = [];
   posted: { channel: string; text: string; ts: string }[] = [];
   postedBlocks: { channel: string; text: string; blocks: unknown[]; ts: string }[] = [];
+  updated: { channel: string; ts: string; text: string; blocks: unknown[] }[] = [];
+  pinned: { channel: string; ts: string }[] = [];
   reactions: { channel: string; ts: string; emoji: string }[] = [];
   publishedViews: { userId: string; blocks: unknown[] }[] = [];
   openedViews: { triggerId: string; view: unknown }[] = [];
@@ -45,6 +47,25 @@ export class FakeSlackClient implements SlackClient {
     const ts = await this.postMessage(channel, text);
     this.postedBlocks.push({ channel, text, blocks, ts });
     return ts;
+  }
+
+  async updateMessage(channel: string, ts: string, text: string, blocks: unknown[]): Promise<void> {
+    this.updated.push({ channel, ts, text, blocks });
+    // Reflect the edit in stored state so history/postedBlocks stay coherent.
+    const msgs = this.channels.get(channel) ?? [];
+    const msg = msgs.find((m) => m.ts === ts);
+    if (msg) msg.text = text;
+    const pb = this.postedBlocks.find((b) => b.channel === channel && b.ts === ts);
+    if (pb) {
+      pb.text = text;
+      pb.blocks = blocks;
+    }
+    if (this.log) console.log(`[fake-slack] updateMessage(${channel}, ${ts}): ${text}`);
+  }
+
+  async pin(channel: string, ts: string): Promise<void> {
+    this.pinned.push({ channel, ts });
+    if (this.log) console.log(`[fake-slack] pin(${channel}, ${ts})`);
   }
 
   async addReaction(channel: string, ts: string, emoji: string): Promise<void> {

@@ -15,6 +15,12 @@ export interface SlackClient {
   postMessage(channel: string, text: string): Promise<string>;
   /** Post a Block Kit message with fallback text; returns the posted message ts. */
   postBlocks(channel: string, text: string, blocks: unknown[]): Promise<string>;
+  /** Edit an existing message in place (chat.update) — used to keep the pinned
+   * incident dashboard current without posting a new message each time. */
+  updateMessage(channel: string, ts: string, text: string, blocks: unknown[]): Promise<void>;
+  /** Pin a message to a channel (pins.add) — pins the incident dashboard so it
+   * stays at the top of the channel's pinned items. Idempotent (already_pinned). */
+  pin(channel: string, ts: string): Promise<void>;
   /** Read recent messages from a channel (newest last). */
   history(channel: string, limit?: number): Promise<SlackMessage[]>;
   /** Add a reaction emoji to a message (used to seed ✅/❌ affordances). */
@@ -70,6 +76,19 @@ export class WebApiSlackClient implements SlackClient {
       blocks,
     });
     return data.ts;
+  }
+
+  async updateMessage(channel: string, ts: string, text: string, blocks: unknown[]): Promise<void> {
+    await this.call("chat.update", { channel, ts, text, blocks });
+  }
+
+  async pin(channel: string, ts: string): Promise<void> {
+    try {
+      await this.call("pins.add", { channel, timestamp: ts });
+    } catch (e) {
+      // Benign: re-pinning an already-pinned dashboard.
+      if (!String(e).includes("already_pinned")) throw e;
+    }
   }
 
   async history(channel: string, limit = 50): Promise<SlackMessage[]> {

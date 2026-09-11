@@ -42,5 +42,13 @@ export async function setSeverity(
     "INSERT INTO incident_updates (id, incident_id, body, status, created_at) VALUES (?, ?, ?, ?, ?)",
     [uid("iu"), incidentId, `Severity set to ${SEVERITY_LABEL[severity]}.`, inc.status, nowIso()],
   );
+
+  // Refresh the pinned dashboard so the card shows the new severity in place.
+  try {
+    const { refreshDashboard } = await import("./dashboard");
+    await refreshDashboard(env, incidentId);
+  } catch {
+    /* non-fatal */
+  }
   return true;
 }

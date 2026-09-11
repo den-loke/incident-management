@@ -104,27 +104,23 @@ export async function postRolesPanel(
 
 /**
  * Apply a role claim from a Slack button press: upsert the assignment, then
- * re-post the panel so the channel reflects the new holder.
+ * refresh the pinned dashboard so the channel reflects the new holder.
  */
 export async function claimRole(
   env: Env,
   incidentId: string,
-  channelId: string,
+  _channelId: string,
   role: IncidentRole,
   slackUserId: string,
 ): Promise<void> {
   const db = new D1Db(env.DB);
   // The claim itself (source of truth) must always persist.
   await new RoleStore(db).claim(incidentId, role, slackUserId);
-  // Re-posting the panel is cosmetic — never let a Slack failure lose the claim.
+  // Refreshing the pinned dashboard is cosmetic — never let a Slack failure
+  // lose the claim. Updates the single card in place (no new panel posted).
   try {
-    const inc = await db.get<{ routing_path: RoutingPath }>(
-      "SELECT routing_path FROM incidents WHERE id = ?",
-      [incidentId],
-    );
-    const roles = rolesForPath(inc?.routing_path ?? "internal");
-    const holders = await holdersMap(db, incidentId);
-    await buildSlack(env).postBlocks(channelId, rolesText(holders, roles), rolesBlocks(holders, roles));
+    const { refreshDashboard } = await import("../incidents/dashboard");
+    await refreshDashboard(env, incidentId);
   } catch {
     /* non-fatal */
   }
