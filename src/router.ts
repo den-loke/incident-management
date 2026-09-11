@@ -8,6 +8,7 @@ import {
 import { requestResolve } from "./incidents/jointResolve";
 import { publishHomeView } from "./stakeholders/service";
 import { buildIntentClassifier, applyIntent } from "./incidents/intent";
+import { answerMention } from "./incidents/answerer";
 import type { SlackClient } from "./clients/slack";
 import { WebApiSlackClient } from "./clients/slack";
 import { FakeSlackClient } from "./clients/fakeSlack";
@@ -68,6 +69,7 @@ export interface RouteResult {
     | "resolved"
     | "resolve-requested"
     | "mention-actioned"
+    | "answered"
     | "home-published"
     | "ignored";
   incidentId?: string;
@@ -152,13 +154,17 @@ export async function routeSlackEvent(
   if (event.type === "app_mention") {
     const intent = await buildIntentClassifier(env).classify(event.text ?? "");
     if (intent.action === "unknown") {
+      // Not a mutating command — treat it as a QUESTION and answer it in natural
+      // language, grounded in the incident's real state (status, severity, roles,
+      // timeline, durations, on-call). This is the agentic path: the bot is an
+      // assistant in-channel, not a command parser with a canned help string.
+      const { stripMention } = await import("./incidents/intent");
+      const question = stripMention(event.text ?? "") || "what's the status?";
+      const reply = await answerMention(env, row.incident_id, question);
       await buildRouterSlack(env)
-        .postMessage(
-          event.channel,
-          `Sorry <@${event.user ?? "there"}>, I didn't catch that. Try: "update please", "set status to identified", "change severity to sev1", "escalate to @someone", "summary?", or "resolve".`,
-        )
+        .postMessage(event.channel, `<@${event.user ?? "there"}> ${reply}`)
         .catch(() => {});
-      return { action: "mention-actioned", incidentId: row.incident_id, channelId: event.channel, intent: "unknown" };
+      return { action: "answered", incidentId: row.incident_id, channelId: event.channel, intent: "answer" };
     }
     const outcome = await applyIntent(env, row.incident_id, event.channel, event.user ?? "unknown", intent);
     return {

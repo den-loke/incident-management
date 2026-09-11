@@ -2,6 +2,7 @@ import { env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { routeSlackEvent, __setRouterSlackClient } from "../src/router";
 import { ruleClassify, stripMention, __setIntentClassifier, FakeIntentClassifier } from "../src/incidents/intent";
+import { __setIncidentAnswerer, FakeIncidentAnswerer } from "../src/incidents/answerer";
 import { declareIncident } from "../src/incidents/commands";
 import {
   __resetIncidentClientOverrides,
@@ -59,6 +60,7 @@ describe("conversational control — router dispatch", () => {
     __setRolesSlackClient(() => slack);
     __setControlsSlackClient(() => slack);
     __setIntentClassifier(() => new FakeIntentClassifier());
+    __setIncidentAnswerer(() => new FakeIncidentAnswerer());
   });
   afterEach(async () => {
     __resetIncidentClientOverrides();
@@ -68,6 +70,7 @@ describe("conversational control — router dispatch", () => {
     __setRolesSlackClient(undefined);
     __setControlsSlackClient(undefined);
     __setIntentClassifier(undefined);
+    __setIncidentAnswerer(undefined);
     for (const t of ["incident_resolution_requests", "incident_updates", "incident_roles", "incident_channels", "incidents"]) {
       await env.DB.prepare(`DELETE FROM ${t}`).run();
     }
@@ -135,12 +138,30 @@ describe("conversational control — router dispatch", () => {
     expect(slack.posted.length).toBeGreaterThan(postsBefore); // a summary was posted
   });
 
-  it("@bot gibberish → posts a help reply, no action", async () => {
+  it("@bot a question → answers it, grounded, no mutation", async () => {
+    const { incidentId, channelId } = await declareInChannel("CV question");
+    slack.posted.length = 0;
+    const res = await routeSlackEvent(mention(channelId, "<@U_BOT> who is the engineering lead?"), env as any);
+    expect(res.action).toBe("answered");
+    expect(res.intent).toBe("answer");
+    // A grounded reply was posted to the channel, mentioning the asker + the incident.
+    const reply = slack.posted.find((p) => p.channel === channelId);
+    expect(reply).toBeTruthy();
+    expect(reply!.text).toContain("<@U_DEN>");
+    expect(reply!.text).toContain(incidentId);
+    // No status/severity mutation happened.
+    const row = await new D1Db(env.DB).get<{ status: string }>("SELECT status FROM incidents WHERE id = ?", [incidentId]);
+    expect(row?.status).toBe("investigating");
+  });
+
+  it("@bot gibberish → answers instead of a canned help string", async () => {
     const { channelId } = await declareInChannel("CV unknown");
     slack.posted.length = 0;
     const res = await routeSlackEvent(mention(channelId, "<@U_BOT> asdfghjkl"), env as any);
-    expect(res.intent).toBe("unknown");
-    expect(slack.posted.some((p) => p.channel === channelId && p.text.includes("didn't catch that"))).toBe(true);
+    expect(res.action).toBe("answered");
+    // The reply is grounded (not the old "didn't catch that" canned string).
+    expect(slack.posted.some((p) => p.channel === channelId && p.text.includes("didn't catch that"))).toBe(false);
+    expect(slack.posted.some((p) => p.channel === channelId && p.text.length > 0)).toBe(true);
   });
 
   it("@bot in an UNMAPPED channel is ignored", async () => {
