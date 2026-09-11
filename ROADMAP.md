@@ -34,6 +34,19 @@ demo as "features," but for us they are one-line constants, not roadmap items.
   status page. Statuspage.io remains the external mirror if/when its sink is built.
 
 ## Shipped
+
+- ✅ **Cmd+K command palette (navigation + quick actions)** — a dependency-free
+  ⌘K / Ctrl+K overlay (`web/src/components/CommandPalette.tsx`) matching the
+  zero-dep hash router. Two tiers: **navigation** (every left-nav page from the
+  `NAV` registry + dynamic "Go to INC-N" for each incident) and **quick actions**
+  (Declare opens the shared declare modal directly; Post update / Change severity /
+  Resolve on an open incident jump to that incident's detail page where the shared
+  `IncidentActions` live). Fuzzy subsequence search, ↑/↓/↵/esc keys, grouped
+  Actions/Incidents/Navigation. Declare was refactored into a controlled
+  `DeclareIncidentDialog` so the header button and the palette drive ONE modal.
+  Discoverable via a header "Search ⌘K" button. Fixed command set, no configurable
+  palette (stance). Tier 3 (agentic "Ask" over the MCP tool surface) is a separate
+  future PR. Frontend-only — no server/D1 change; storybook screenshot-verified.
 - ✅ **Jira create-from-incident + link-existing** — Jira was export-only (action
   items on post-mortem publish). Now the INCIDENT itself can get a Jira issue:
   `incident_external_links` (migration `0019`, generalises to other providers),

@@ -31,10 +31,12 @@ function isActive(path: string, nav: string): boolean {
 export function AppShell({
   viewer,
   onDeclare,
+  onOpenPalette,
   children,
 }: {
   viewer: Viewer;
   onDeclare: () => void;
+  onOpenPalette?: () => void;
   children: React.ReactNode;
 }) {
   const path = useRoute();
@@ -78,6 +80,17 @@ export function AppShell({
           {/* Mobile nav: a compact select fallback under sm */}
           <MobileNav path={path} />
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            {onOpenPalette && (
+              <button
+                type="button"
+                onClick={onOpenPalette}
+                className="hidden items-center gap-2 rounded-md px-2.5 py-1 text-xs text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent/50 hover:text-foreground sm:flex"
+                aria-label="Open command palette"
+              >
+                Search
+                <kbd className="rounded bg-muted px-1 py-0.5 font-sans text-[10px]">⌘K</kbd>
+              </button>
+            )}
             <DeclareIncidentButton onDone={onDeclare} />
             <span className="hidden sm:inline">{viewer.name || viewer.user_id}</span>
             <a className={buttonVariants({ variant: "ghost", size: "sm" })} href="/auth/logout">
