@@ -57,24 +57,16 @@ export async function declareIncident(
     [channelId, incidentId, incidentId],
   );
 
-  // Post the claimable-roles panel to the new channel. Best-effort: a failure
-  // here must not fail the declare. Lazy import avoids a module cycle. External
-  // (upstream/partner) incidents are Support-Lead-only, so the panel offers only
-  // the roles this routing path allows.
+  // Post the ONE pinned incident "dashboard" — status · severity · roles ·
+  // action buttons, all in a single message pinned to the channel and edited in
+  // place on every later change (see incidents/dashboard.ts). This replaces the
+  // separate roles + controls panels that used to be re-posted on each change.
+  // Best-effort; lazy import avoids a module cycle.
   try {
-    const { postRolesPanel } = await import("../roles/service");
-    await postRolesPanel(env, incidentId, channelId, routingPath ?? "internal");
+    const { ensureDashboard } = await import("./dashboard");
+    await ensureDashboard(env, incidentId, channelId);
   } catch {
-    /* non-fatal: the panel can be re-posted later */
-  }
-
-  // Post the incident-controls panel (all actions as buttons — slash commands
-  // optional). Best-effort; lazy import avoids a module cycle.
-  try {
-    const { postControlsPanel } = await import("./controls");
-    await postControlsPanel(env, channelId);
-  } catch {
-    /* non-fatal */
+    /* non-fatal: the dashboard can be re-posted later */
   }
 
   // Invite every standing stakeholder to the new channel. Best-effort — a
@@ -101,6 +93,15 @@ export async function postIncidentUpdate(
 ): Promise<void> {
   const stub = stubForIncident(env, incidentId);
   await stub.fetch(commandRequest({ cmd: "postUpdate", body, status }));
+  // If the status advanced, refresh the pinned dashboard so it reflects it.
+  if (status) {
+    try {
+      const { refreshDashboard } = await import("./dashboard");
+      await refreshDashboard(env, incidentId);
+    } catch {
+      /* non-fatal */
+    }
+  }
 }
 
 /** Trigger an on-demand summary (conversational "@bot update please" / "summarize"). */
@@ -120,6 +121,14 @@ export async function resolveIncident(
 ): Promise<void> {
   const stub = stubForIncident(env, incidentId);
   await stub.fetch(commandRequest({ cmd: "resolve", body }));
+
+  // Refresh the pinned dashboard: it now shows Resolved and drops the buttons.
+  try {
+    const { refreshDashboard } = await import("./dashboard");
+    await refreshDashboard(env, incidentId);
+  } catch {
+    /* non-fatal */
+  }
 
   // Auto-draft a post-mortem from the (now complete) timeline. Best-effort: a
   // draft failure must never fail the resolve itself. Imported lazily to avoid

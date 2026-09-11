@@ -11,6 +11,7 @@ import {
 } from "../src/incident";
 import { __setRolesSlackClient } from "../src/roles/service";
 import { __setControlsSlackClient } from "../src/incidents/controls";
+import { __setDashboardSlackClient } from "../src/incidents/dashboard";
 import { __setStakeholderSlackClient } from "../src/stakeholders/service";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
 import { FakeSummarizer } from "../src/clients/fakeOpenai";
@@ -68,12 +69,14 @@ describe("routing paths — declare", () => {
     __setIncidentClientOverrides({ slack: () => fake, summarizer: () => new FakeSummarizer() });
     __setRolesSlackClient(() => fake);
     __setControlsSlackClient(() => fake);
+    __setDashboardSlackClient(() => fake);
     __setStakeholderSlackClient(() => fake);
   });
   afterEach(async () => {
     __resetIncidentClientOverrides();
     __setRolesSlackClient(undefined);
     __setControlsSlackClient(undefined);
+    __setDashboardSlackClient(undefined);
     __setStakeholderSlackClient(undefined);
     await cleanIncidents();
   });
@@ -83,13 +86,17 @@ describe("routing paths — declare", () => {
     const row = await env.DB.prepare("SELECT routing_path FROM incidents WHERE id = ?")
       .bind(incidentId).first<{ routing_path: string }>();
     expect(row?.routing_path).toBe("external");
-    // Roles panel: find the postBlocks whose blocks have an actions block.
-    const panel = fake.postedBlocks.find((b) =>
-      (b.blocks as any[]).some((blk) => blk.type === "actions"),
+    // The pinned dashboard carries the role claim buttons in its roles action
+    // block. Only the Support-Lead Take button (no Engineering Lead) for external.
+    const dash = fake.postedBlocks.find((b) =>
+      (b.blocks as any[]).some(
+        (blk) => blk.type === "actions" && blk.block_id === "inc_dash_roles",
+      ),
     );
-    const actions = (panel!.blocks as any[]).find((blk) => blk.type === "actions");
-    // Only the Support-Lead Take button (no Engineering Lead) for external.
-    const claimBtns = actions.elements.filter((e: any) => String(e.action_id).startsWith("claim_role:"));
+    const rolesBlk = (dash!.blocks as any[]).find(
+      (blk) => blk.type === "actions" && blk.block_id === "inc_dash_roles",
+    );
+    const claimBtns = rolesBlk.elements.filter((e: any) => String(e.action_id).startsWith("claim_role:"));
     expect(claimBtns).toHaveLength(1);
     expect(claimBtns[0].value).toBe("customer_support_lead");
   });
@@ -99,11 +106,15 @@ describe("routing paths — declare", () => {
     const row = await env.DB.prepare("SELECT routing_path FROM incidents WHERE id = ?")
       .bind(incidentId).first<{ routing_path: string }>();
     expect(row?.routing_path).toBe("internal");
-    const panel = fake.postedBlocks.find((b) =>
-      (b.blocks as any[]).some((blk) => blk.type === "actions"),
+    const dash = fake.postedBlocks.find((b) =>
+      (b.blocks as any[]).some(
+        (blk) => blk.type === "actions" && blk.block_id === "inc_dash_roles",
+      ),
     );
-    const actions = (panel!.blocks as any[]).find((blk) => blk.type === "actions");
-    const claimBtns = actions.elements.filter((e: any) => String(e.action_id).startsWith("claim_role:"));
+    const rolesBlk = (dash!.blocks as any[]).find(
+      (blk) => blk.type === "actions" && blk.block_id === "inc_dash_roles",
+    );
+    const claimBtns = rolesBlk.elements.filter((e: any) => String(e.action_id).startsWith("claim_role:"));
     expect(claimBtns).toHaveLength(2);
   });
 });

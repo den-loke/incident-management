@@ -22,6 +22,7 @@ import {
   __resetIncidentClientOverrides,
 } from "../src/incident";
 import { __setRolesSlackClient } from "../src/roles/service";
+import { __setDashboardSlackClient } from "../src/incidents/dashboard";
 import { __setStakeholderSlackClient } from "../src/stakeholders/service";
 import { __setJointResolveSlackClient } from "../src/incidents/jointResolve";
 import { FakeSlackClient } from "../src/clients/fakeSlack";
@@ -33,6 +34,7 @@ function wire(fake: FakeSlackClient) {
   __setRolesSlackClient(() => fake);
   __setStakeholderSlackClient(() => fake);
   __setJointResolveSlackClient(() => fake);
+  __setDashboardSlackClient(() => fake);
 }
 function unwire() {
   __setControlsSlackClient(undefined);
@@ -40,6 +42,7 @@ function unwire() {
   __setRolesSlackClient(undefined);
   __setStakeholderSlackClient(undefined);
   __setJointResolveSlackClient(undefined);
+  __setDashboardSlackClient(undefined);
 }
 
 async function updates(incidentId: string) {
@@ -68,13 +71,15 @@ describe("incident controls panel", () => {
     }
   });
 
-  it("declare posts a controls panel to the incident channel", async () => {
+  it("declare posts a pinned incident dashboard to the channel", async () => {
     const { channelId } = await declareIncident(env as any, "CTL Checkout down");
-    const panel = fake.postedBlocks.find(
-      (b) => b.channel === channelId && b.text.includes("Incident controls"),
+    // The dashboard is one pinned Block Kit message (header with the incident id).
+    const dash = fake.postedBlocks.find(
+      (b) => b.channel === channelId && b.text.includes("CTL Checkout down"),
     );
-    expect(panel).toBeTruthy();
-    // Five buttons.
+    expect(dash).toBeTruthy();
+    expect(fake.pinned.some((p) => p.channel === channelId && p.ts === dash!.ts)).toBe(true);
+    // The controls block still exposes five action buttons.
     const blocks = controlsBlocks() as any[];
     const actions = blocks.find((b) => b.type === "actions");
     expect(actions.elements).toHaveLength(5);
