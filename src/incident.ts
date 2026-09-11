@@ -11,6 +11,7 @@ import type { IncidentStatus } from "./status/types";
 import type { IncidentSeverity, RoutingPath } from "./status/types";
 import { buildStatusSink } from "./status";
 import { D1Db } from "./status/d1";
+import { recordIncidentMessage } from "./incidents/messages";
 
 /** Progress-update cadence. See docs/ARCHITECTURE.md §2. */
 export const ALARM_INTERVAL_MS = 15 * 60 * 1000;
@@ -124,6 +125,26 @@ export class Incident implements DurableObject {
     return buildStatusSink(new D1Db(this.env.DB), this.env);
   }
 
+  /** D1 handle for the conversation transcript (migration 0020). */
+  private transcriptDb(): D1Db {
+    return new D1Db(this.env.DB);
+  }
+
+  /**
+   * Post a message to the channel AND record it in the unified transcript as a
+   * 'bot' post. Every outbound DO post goes through here so the transcript is
+   * complete. Recording is best-effort (never blocks the post).
+   */
+  private async postAndRecord(
+    slack: SlackClient,
+    incidentId: string,
+    channelId: string,
+    text: string,
+  ): Promise<void> {
+    await slack.postMessage(channelId, text);
+    await recordIncidentMessage(this.transcriptDb(), incidentId, { kind: "bot", text });
+  }
+
   /**
    * Internal command API. The front Worker routes to a DO stub via fetch();
    * the body is a JSON Command. Not a public HTTP surface.
@@ -144,8 +165,19 @@ export class Incident implements DurableObject {
       case "resolve":
         return json(await this.resolve(command.body));
       case "message":
-        // Inbound channel activity — recorded implicitly by Slack; the DO
-        // simply keeps its alarm alive. Nothing to persist here yet.
+        // Inbound human channel activity — capture it into the unified transcript
+        // (migration 0020) so the report + detail page have the full conversation.
+        // Best-effort; still keeps the alarm alive via its own schedule.
+        {
+          const incId = await this.state.storage.get<string>(KEY.incidentId);
+          if (incId) {
+            await recordIncidentMessage(this.transcriptDb(), incId, {
+              kind: "human",
+              text: command.text,
+              slackUserId: command.user,
+            });
+          }
+        }
         return json({ ok: true });
       case "summarize":
         return json(await this.summarizeNow());
@@ -180,7 +212,7 @@ export class Incident implements DurableObject {
     });
     const channelId = await slack.createChannel(channelName(incident.id));
     if (cmd.body) {
-      await slack.postMessage(channelId, `:rotating_light: ${cmd.body}`);
+      await this.postAndRecord(slack, incident.id, channelId, `:rotating_light: ${cmd.body}`);
     }
 
     await this.state.storage.put({
@@ -213,7 +245,7 @@ export class Incident implements DurableObject {
     await this.state.storage.put(KEY.status, nextStatus);
 
     const slack = this.buildSlack();
-    await slack.postMessage(channelId, body);
+    await this.postAndRecord(slack, incidentId, channelId, body);
 
     return { ok: true };
   }
@@ -232,7 +264,7 @@ export class Incident implements DurableObject {
     await this.state.storage.put(KEY.status, "resolved");
 
     const slack = this.buildSlack();
-    await slack.postMessage(channelId, `:white_check_mark: ${body ?? "Resolved."}`);
+    await this.postAndRecord(slack, incidentId, channelId, `:white_check_mark: ${body ?? "Resolved."}`);
 
     // Stop the loop: cancel any pending alarm so alarm() never reschedules.
     await this.state.storage.deleteAlarm();
@@ -259,7 +291,7 @@ export class Incident implements DurableObject {
     await this.buildSink().appendIncidentUpdate(incidentId, body, "monitoring");
     await this.state.storage.put(KEY.status, "monitoring");
     await this.state.storage.put(KEY.lastMessageCount, messages.length);
-    await slack.postMessage(channelId, body);
+    await this.postAndRecord(slack, incidentId, channelId, body);
     return { ok: true };
   }
 
@@ -297,7 +329,7 @@ export class Incident implements DurableObject {
 
       const sink = this.buildSink();
       await sink.appendIncidentUpdate(incidentId, body, "monitoring");
-      await slack.postMessage(channelId, body);
+      await this.postAndRecord(slack, incidentId, channelId, body);
 
       await this.state.storage.put(KEY.status, "monitoring");
       await this.state.storage.put(KEY.lastMessageCount, messages.length);

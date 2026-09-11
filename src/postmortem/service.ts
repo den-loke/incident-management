@@ -11,6 +11,7 @@ import type { PostmortemWithItems } from "./types";
 import type { Summarizer, TimelineEntry } from "../clients/openai";
 import { OpenAiSummarizer } from "../clients/openai";
 import { FakeSummarizer } from "../clients/fakeOpenai";
+import { listIncidentMessages } from "../incidents/messages";
 
 // Test seam mirroring the DO's: tests register a fake summarizer here so the
 // service never calls OpenAI. Bypass mode also uses a fake.
@@ -45,11 +46,18 @@ export async function generatePostmortemDraft(
     "SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at",
     [incidentId],
   );
-  const timeline: TimelineEntry[] = updates.map((u) => ({
-    body: u.body,
-    status: u.status,
-    created_at: u.created_at,
-  }));
+  // Full conversation transcript (migration 0020) — human + bot messages. Folding
+  // it into the draft input gives the summarizer the WHOLE conversation, not just
+  // the structured status updates (report fidelity — pain point #2).
+  const messages = await listIncidentMessages(db, incidentId);
+  const timeline: TimelineEntry[] = [
+    ...updates.map((u) => ({ body: u.body, status: u.status, created_at: u.created_at })),
+    ...messages.map((m) => ({
+      body: m.kind === "human" ? `${m.slack_user_id ?? "someone"}: ${m.text}` : m.text,
+      status: m.kind === "human" ? "message" : "bot",
+      created_at: m.ts || m.created_at,
+    })),
+  ].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   const fields = await buildSummarizer(env).draftPostmortem(
     incident.name,

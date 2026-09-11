@@ -111,6 +111,43 @@ function JiraLinks({ incident, onChange }: { incident: Incident; onChange: () =>
   );
 }
 
+function ConversationBlock({
+  incident,
+  names,
+}: {
+  incident: Incident;
+  names?: Record<string, string>;
+}) {
+  const messages = incident.messages ?? [];
+  if (messages.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">Conversation ({messages.length})</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-2">
+          {messages.map((m) => (
+            <li key={m.id} className="text-sm">
+              <span className="text-xs text-muted-foreground">{fmt(m.ts)}</span>{" "}
+              {m.kind === "bot" ? (
+                <span className="text-xs font-medium text-muted-foreground">bot</span>
+              ) : (
+                <span className="text-xs font-medium">
+                  {m.slack_user_id ? uname(m.slack_user_id, names).replace(/^@/, "") : "someone"}
+                </span>
+              )}
+              <div className={m.kind === "bot" ? "text-muted-foreground" : ""}>
+                {renderMentions(m.text, names)}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
 function PropertiesRail({
   incident,
   names,
@@ -280,6 +317,7 @@ export function IncidentDetailPage({
           <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
             <div className="space-y-4">
               <ActivityTimeline incident={incident} names={data.user_names} />
+              <ConversationBlock incident={incident} names={data.user_names} />
               {incident.status !== "resolved" ? (
                 <Card>
                   <CardContent className="pt-6">

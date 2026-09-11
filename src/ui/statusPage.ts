@@ -11,6 +11,7 @@ import { RoleStore } from "../roles/store";
 import type { RoleAssignment } from "../roles/types";
 import { listMaintenance, type MaintenanceWindow } from "../maintenance/service";
 import { listIncidentLinks, type ExternalLink } from "../incidents/externalLinks";
+import { listIncidentMessages, type IncidentMessage } from "../incidents/messages";
 
 export interface PendingResolution {
   requested_by: string;
@@ -26,6 +27,8 @@ export interface IncidentView extends Incident {
   channel: string | null;
   /** External record links (Jira today), newest first. */
   external_links: ExternalLink[];
+  /** Full channel conversation transcript (human + bot), chronological. */
+  messages: IncidentMessage[];
 }
 
 export interface StatusPayload {
@@ -73,6 +76,7 @@ export async function loadStatus(
       pending_resolution: pending ?? null,
       channel: chan?.channel ?? null,
       external_links: await listIncidentLinks(env, inc.id),
+      messages: await listIncidentMessages(db, inc.id),
     });
   }
 
