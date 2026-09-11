@@ -85,9 +85,10 @@ export class WebApiSlackClient implements SlackClient {
   async pin(channel: string, ts: string): Promise<void> {
     try {
       await this.call("pins.add", { channel, timestamp: ts });
-    } catch (e) {
-      // Benign: re-pinning an already-pinned dashboard.
-      if (!String(e).includes("already_pinned")) throw e;
+    } catch {
+      // Pinning is cosmetic and best-effort: an already-pinned message, or a
+      // workspace without the pins:write scope, must NOT propagate — the sticky
+      // dashboard still works (it edits in place) whether or not it is pinned.
     }
   }
 
