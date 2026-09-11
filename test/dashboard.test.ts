@@ -87,6 +87,30 @@ describe("sticky incident dashboard", () => {
     expect(header.text.text).toContain("Checkout down");
   });
 
+  it("a pin failure (e.g. no pins:write) still stores the ts and updates in place, not re-posts", async () => {
+    // Simulate a workspace where pins.add fails (missing scope): pin() throws.
+    class NoPinSlack extends FakeSlackClient {
+      async pin(): Promise<void> {
+        throw new Error("slack pins.add failed: missing_scope");
+      }
+    }
+    const noPin = new NoPinSlack(false);
+    wire(noPin);
+
+    const { incidentId, channelId } = await declareIncident(env as any, "No pin scope");
+    // Despite the pin throwing, the ts MUST be persisted (regression: it used to
+    // be stored AFTER the pin, so a pin failure stranded it null → re-posts).
+    const ts = await dashTs(incidentId);
+    expect(ts).toBeTruthy();
+
+    // A later change edits that same message in place — no second card posted.
+    const postsBefore = noPin.postedBlocks.filter((b) => b.channel === channelId).length;
+    noPin.updated.length = 0;
+    await postIncidentUpdate(env as any, incidentId, "poke", "identified");
+    expect(noPin.postedBlocks.filter((b) => b.channel === channelId).length).toBe(postsBefore);
+    expect(noPin.updated.some((u) => u.channel === channelId && u.ts === ts)).toBe(true);
+  });
+
   it("a status change edits the pinned card in place (no new panel)", async () => {
     const { incidentId, channelId } = await declareIncident(env as any, "DB latency");
     const beforePosts = fake.postedBlocks.filter((b) => b.channel === channelId).length;

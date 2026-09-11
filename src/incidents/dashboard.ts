@@ -200,11 +200,15 @@ export async function ensureDashboard(
   if (!state) return;
   const slack = buildSlack(env);
   const ts = await slack.postBlocks(channelId, dashboardText(state), dashboardBlocks(state));
-  await slack.pin(channelId, ts);
+  // Persist the ts FIRST — this is the load-bearing step that lets every later
+  // change edit the card in place. Pinning is cosmetic and must never gate it
+  // (e.g. a missing pins:write scope would otherwise strand dashboard_ts null
+  // and make every change re-post a fresh card).
   await new D1Db(env.DB).run(
     "UPDATE incident_channels SET dashboard_ts = ? WHERE incident_id = ?",
     [ts, incidentId],
   );
+  await slack.pin(channelId, ts);
 }
 
 /**
