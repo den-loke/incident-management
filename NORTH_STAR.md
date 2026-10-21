@@ -101,10 +101,10 @@ shape". Rough value order:
   as the Engineering roster: "(Engineering roster)" header, "Rotation & overrides"
   subheading, "Support is always-on — no rotation" note; label/clarity change, no logic —
   no support-rotation concept existed to remove).
-- **MCP connector (analytics-first)** — **✅ DONE** (`src/mcp/server.ts`: MCP-over-HTTP
-  at `POST /mcp`, bearer-token via `MCP_TOKEN`; read-only tools `get_report`,
-  `get_insights`, `list_follow_ups`, `list_incidents` wrapping the reporting layer;
-  no SDK dep. Live-response tools remain a later, secondary addition).
+- **MCP connector (analytics + incident raising)** — **✅ DONE** (`src/mcp/server.ts`:
+  MCP-over-HTTP at `POST /mcp`, individually managed, revocable hashed agent tokens;
+  `raise_incident` records the authenticated agent in the audit log alongside read-only
+  reporting tools. No MCP resolve/close tools are exposed; no SDK dependency).
 - **Post-incident flow (surface the fixed checklist)** — **✅ DONE**
   (`src/postmortem/postIncidentFlow.ts`: `buildPostIncidentFlow` derives the fixed
   checklist per incident — resolved → drafted → items captured → items filed → published;

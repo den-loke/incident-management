@@ -6,6 +6,7 @@ import { TeamsSection } from "@/components/TeamsSection";
 import { MaintenanceSection } from "@/components/MaintenanceSection";
 import { AuditSection } from "@/components/AuditSection";
 import { DecisionGuideSection } from "@/components/DecisionGuideSection";
+import { McpAgentSettings } from "@/components/McpAgentSettings";
 import type { StatusResponse } from "@/types";
 
 // These sections are self-fetching (own /api call), so the pages are thin.
@@ -55,6 +56,10 @@ export function MaintenancePage({ data, onChange }: { data: StatusResponse; onCh
       <MaintenanceSection windows={data.maintenance} onChange={onChange} />
     </div>
   );
+}
+
+export function SettingsPage() {
+  return <div className="space-y-4"><h1 className="text-xl font-semibold tracking-tight">Settings</h1><h2 className="text-base font-medium">MCP agent tokens</h2><McpAgentSettings /></div>;
 }
 
 export function AuditPage({ data }: { data: StatusResponse }) {

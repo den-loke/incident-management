@@ -40,7 +40,8 @@ import { mapZendeskWebhook, verifyZendeskSignature, type ZendeskWebhookBody } fr
 import { resolveTeams } from "./teams/service";
 import { StakeholderStore } from "./stakeholders/store";
 import { resolveNames } from "./slack/directory";
-import { dispatchMcp, verifyMcpAuth } from "./mcp/server";
+import { dispatchMcp, readMcpBearer } from "./mcp/server";
+import { authenticateAgent, createAgentToken, listAgentTokens, revokeAgentToken } from "./mcp/agentTokens";
 import { ackAlert, promoteAlertToIncident } from "./oncall/escalation";
 import { routeNewAlert } from "./oncall/routing";
 import { setOverride } from "./oncall/rotation";
@@ -314,13 +315,37 @@ export default {
       return json({ teams, stakeholder_optins, user_names });
     }
 
-    // --- MCP connector (analytics-first, read-only). MCP-over-HTTP: a client
-    // POSTs JSON-RPC 2.0 to /mcp. Bearer-token auth (MCP_TOKEN; unset = disabled).
-    // Accepts a single request or a batch array; notifications get no reply. ---
-    if (request.method === "POST" && url.pathname === "/mcp") {
-      if (!verifyMcpAuth(request.headers, env.MCP_TOKEN)) {
-        return json({ error: "unauthorized" }, 401);
+    // --- MCP agent token settings. Any signed-in workspace member can manage
+    // tokens; plaintext is returned only once by POST. ---
+    if (url.pathname === "/api/settings/mcp-agents") {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      if (request.method === "GET") return json({ agents: await listAgentTokens(env) });
+      if (request.method === "POST") {
+        const body = await readJson(request);
+        const agentName = str(body?.agent_name).trim();
+        if (!agentName || agentName.length > 120) return json({ error: "agent_name must be between 1 and 120 characters" }, 400);
+        const created = await createAgentToken(env, agentName);
+        await recordAudit(env, { actor: `web:${session.user_id}`, action: "mcp_agent_token.create", target_type: "mcp_agent", target_id: created.agent.id, detail: { agent_name: agentName } });
+        return json(created, 201);
       }
+    }
+    const revokeAgentMatch = url.pathname.match(/^\/api\/settings\/mcp-agents\/([^/]+)$/);
+    if (request.method === "DELETE" && revokeAgentMatch) {
+      const session = await getSession(request, env);
+      if (!session) return json({ error: "unauthorized" }, 401);
+      const id = decodeURIComponent(revokeAgentMatch[1]);
+      if (!await revokeAgentToken(env, id)) return json({ error: "not_found" }, 404);
+      await recordAudit(env, { actor: `web:${session.user_id}`, action: "mcp_agent_token.revoke", target_type: "mcp_agent", target_id: id });
+      return json({ ok: true });
+    }
+
+    // --- MCP-over-HTTP; credentials resolve to a provisioned agent and all
+    // requests are attributed to that immutable agent name. ---
+    if (request.method === "POST" && url.pathname === "/mcp") {
+      const bearer = readMcpBearer(request.headers);
+      const agent = bearer ? await authenticateAgent(env, bearer) : null;
+      if (!agent) return json({ error: "unauthorized" }, 401);
       let payload: unknown;
       try {
         payload = await request.json();
@@ -330,12 +355,12 @@ export default {
       if (Array.isArray(payload)) {
         const out = [];
         for (const req of payload) {
-          const res = await dispatchMcp(env, req);
+          const res = await dispatchMcp(env, req, agent.agent_name);
           if (res) out.push(res);
         }
         return json(out);
       }
-      const res = await dispatchMcp(env, payload as Parameters<typeof dispatchMcp>[1]);
+      const res = await dispatchMcp(env, payload as Parameters<typeof dispatchMcp>[1], agent.agent_name);
       return res ? json(res) : new Response(null, { status: 204 });
     }
 
