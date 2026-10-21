@@ -235,7 +235,7 @@ test, not the backbone.
 | `ZENDESK_WEBHOOK_SECRET` | HMAC secret for `POST /api/alerts/zendesk` (Zendesk trigger webhook); unset = receiver disabled | ⬜ optional |
 | `TEAM_ENGINEERING_USERGROUP` / `TEAM_SUPPORT_USERGROUP` | Slack usergroup ids linked as the Engineering / Customer Support response teams; membership managed in Slack, resolved via `usergroups.users.list` (needs the `usergroups:read` bot scope); unset = that team unconfigured | ⬜ optional |
 | `TEAM_STAKEHOLDERS_USERGROUP` | Slack usergroup id linked as the Stakeholders team; its members are auto-invited to every new incident channel (unioned with the Home-tab opt-in list); unset = only opt-ins invited | ⬜ optional |
-| `MCP_TOKEN` | Bearer token for the read-only MCP analytics connector at `POST /mcp`; unset = connector disabled | ⬜ optional |
+| MCP agent tokens | Managed in signed-in dashboard Settings. Individual credentials are SHA-256 hashed in D1, shown only on creation, and immediately revocable; `POST /mcp` is disabled until a token exists. | ✅ managed in app |
 | `AUTH_MODE` | `bypass` for E2E; unset/`slack` in prod | ⬜ (E2E only) |
 
 ---

@@ -1,8 +1,10 @@
 import { env, SELF } from "cloudflare:test";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createAgentToken } from "../src/mcp/agentTokens";
 import { getIncidentDetail, getIncidentTimeline, getDraftReportData } from "../src/incidents/read";
 
-const TOKEN = "e2e-mcp-token"; // matches vitest.config.ts binding
+let TOKEN = "";
+beforeAll(async () => { TOKEN = (await createAgentToken(env as any, "read-test-agent")).token; });
 
 async function seedIncident(id: string) {
   // Declared at 00:00, identified 00:10, resolved 00:40 → durations derivable.

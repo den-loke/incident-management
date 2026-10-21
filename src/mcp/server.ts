@@ -1,15 +1,14 @@
 /// <reference types="@cloudflare/workers-types" />
-// MCP connector (analytics-first, read-only). See ROADMAP → "MCP connector for
-// Claude". Exposes the tool's REPORTING/ANALYTICS surface over MCP-over-HTTP so
+// MCP connector (incident raising + analytics). See ROADMAP → "MCP connector for
+// Claude". Exposes reporting tools and a narrowly scoped raise action over MCP-over-HTTP so
 // Claude (or any MCP client) can query it in natural language: "how many
 // incidents last quarter?", "which severities dominate?", "what's the action-item
 // backlog?", "show me open follow-ups / past incidents".
 //
 // Deliberately minimal & self-contained: a small JSON-RPC 2.0 handler for the
 // core MCP methods (initialize / tools/list / tools/call) over a single POST /mcp
-// endpoint — no SDK dependency (single-tenant, opinionated). All tools are
-// READ-ONLY analytics; no declare/update/resolve here (live-response tools are a
-// deliberate later, secondary addition). Bearer-token auth via MCP_TOKEN.
+// endpoint — no SDK dependency (single-tenant, opinionated). Agents authenticate
+// with individual, revocable tokens; no resolve or close action is exposed.
 
 import type { Env } from "../env";
 import { D1Db } from "../status/d1";
@@ -18,6 +17,8 @@ import { buildInsights } from "../reporting/insights";
 import { listFollowUps, listIncidentHistory } from "../reporting/followups";
 import { getIncidentDetail, getIncidentTimeline, getDraftReportData } from "../incidents/read";
 import type { IncidentSeverity, RoutingPath } from "../status/types";
+import { declareIncident } from "../incidents/commands";
+import { recordAudit } from "../audit/log";
 
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_INFO = { name: "incident-management", version: "1.0.0" };
@@ -29,7 +30,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>;
 }
 
-type ToolHandler = (env: Env, args: Record<string, unknown>) => Promise<unknown>;
+type ToolHandler = (env: Env, args: Record<string, unknown>, agentName: string) => Promise<unknown>;
 
 interface ToolDef {
   name: string;
@@ -49,8 +50,36 @@ function period(args: Record<string, unknown>): string {
   return ["7d", "30d", "90d", "all"].includes(p) ? p : "30d";
 }
 
-/** All read-only analytics tools. */
+/** Analytics tools plus the narrowly scoped incident-creation action. */
 export const MCP_TOOLS: ToolDef[] = [
+  {
+    name: "raise_incident",
+    description: "Raise a new incident. The authenticated agent identity is recorded for auditability. This tool cannot resolve or close incidents.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Short incident title." },
+        body: { type: "string", description: "Initial incident description." },
+        severity: { type: "string", enum: ["sev1", "sev2", "sev3"] },
+        routing_path: { type: "string", enum: ["internal", "external"] },
+      },
+      required: ["name"],
+    },
+    handler: async (env, args, agentName) => {
+      const name = typeof args.name === "string" ? args.name.trim() : "";
+      if (!name || name.length > 200) throw new Error("name must be between 1 and 200 characters");
+      const body = typeof args.body === "string" ? args.body.trim() : undefined;
+      if (body && body.length > 10000) throw new Error("body must be 10000 characters or fewer");
+      const severity = args.severity === "sev1" || args.severity === "sev2" || args.severity === "sev3" ? args.severity : undefined;
+      const routingPath = args.routing_path === "internal" || args.routing_path === "external" ? args.routing_path : undefined;
+      const result = await declareIncident(env, name, body || undefined, severity, routingPath);
+      await recordAudit(env, {
+        actor: `mcp:${agentName}`, action: "incident.declare", target_type: "incident",
+        target_id: result.incidentId, source: "system", detail: { name, severity: severity ?? null, routing_path: routingPath ?? null },
+      });
+      return { incident_id: result.incidentId };
+    },
+  },
   {
     name: "get_report",
     description:
@@ -169,7 +198,7 @@ function rpcError(id: JsonRpcRequest["id"], code: number, message: string) {
 
 /** Dispatch one JSON-RPC request against the MCP surface. Returns the response
  * object, or null for a notification (no id → no reply). */
-export async function dispatchMcp(env: Env, req: JsonRpcRequest): Promise<object | null> {
+export async function dispatchMcp(env: Env, req: JsonRpcRequest, agentName = "unknown"): Promise<object | null> {
   const isNotification = req.id === undefined || req.id === null;
   switch (req.method) {
     case "initialize":
@@ -192,7 +221,7 @@ export async function dispatchMcp(env: Env, req: JsonRpcRequest): Promise<object
       if (!tool) return rpcError(req.id, -32602, `unknown tool: ${name}`);
       const args = (req.params?.arguments as Record<string, unknown>) ?? {};
       try {
-        const data = await tool.handler(env, args);
+        const data = await tool.handler(env, args, agentName);
         // MCP tool result: content array. We return the JSON as text content.
         return rpcResult(req.id, {
           content: [{ type: "text", text: JSON.stringify(data) }],
@@ -211,9 +240,8 @@ export async function dispatchMcp(env: Env, req: JsonRpcRequest): Promise<object
   }
 }
 
-/** Bearer-token check for POST /mcp. False when MCP_TOKEN is unset (disabled). */
-export function verifyMcpAuth(headers: Headers, token: string | undefined): boolean {
-  if (!token) return false;
-  const auth = headers.get("authorization") ?? "";
-  return auth === `Bearer ${token}`;
+/** Extract a non-empty bearer credential from an Authorization header. */
+export function readMcpBearer(headers: Headers): string | null {
+  const match = (headers.get("authorization") ?? "").match(/^Bearer\s+(\S+)$/i);
+  return match?.[1] ?? null;
 }

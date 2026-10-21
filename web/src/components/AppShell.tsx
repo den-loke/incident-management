@@ -20,6 +20,7 @@ export const NAV: NavItem[] = [
   { path: "/teams", label: "Teams" },
   { path: "/decision-guide", label: "Decision guide" },
   { path: "/audit", label: "Audit" },
+  { path: "/settings", label: "Settings" },
 ];
 
 /** True when `nav` should be highlighted for the current `path`. */

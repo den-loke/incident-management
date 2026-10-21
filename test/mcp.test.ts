@@ -1,7 +1,14 @@
-import { SELF } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { env, SELF } from "cloudflare:test";
+import { beforeAll, describe, expect, it } from "vitest";
+import { createAgentToken } from "../src/mcp/agentTokens";
 
-const TOKEN = "e2e-mcp-token"; // matches vitest.config.ts binding
+let TOKEN = "";
+let AGENT_ID = "";
+beforeAll(async () => {
+  const created = await createAgentToken(env as any, "e2e-agent");
+  TOKEN = created.token;
+  AGENT_ID = created.agent.id;
+});
 
 async function rpc(body: unknown, token: string | null = TOKEN) {
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -23,7 +30,7 @@ describe("MCP connector (/mcp)", () => {
     expect(typeof body.result.protocolVersion).toBe("string");
   });
 
-  it("tools/list advertises the analytics + per-incident tools", async () => {
+  it("tools/list includes incident raising but no resolve or close actions", async () => {
     const res = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list" });
     const body = (await res.json()) as { result: { tools: { name: string }[] } };
     const names = body.result.tools.map((t) => t.name).sort();
@@ -35,7 +42,21 @@ describe("MCP connector (/mcp)", () => {
       "get_report",
       "list_follow_ups",
       "list_incidents",
+      "raise_incident",
     ]);
+    expect(names.some((name) => /resolve|close/i.test(name))).toBe(false);
+  });
+
+  it("rejects a raise request without a required incident name", async () => {
+    const response = await rpc({ jsonrpc: "2.0", id: 20, method: "tools/call", params: { name: "raise_incident", arguments: {} } });
+    const body = await response.json() as { result: { isError: boolean } };
+    expect(body.result.isError).toBe(true);
+  });
+
+  it("does not store plaintext agent credentials", async () => {
+    const row = await env.DB.prepare("SELECT token_hash FROM mcp_agent_tokens WHERE agent_name = ?").bind("e2e-agent").first<{ token_hash: string }>();
+    expect(row?.token_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(row?.token_hash).not.toBe(TOKEN);
   });
 
   it("tools/call get_report returns JSON text content", async () => {
@@ -86,5 +107,12 @@ describe("MCP connector (/mcp)", () => {
     ]);
     const arr = (await res.json()) as { id: number }[];
     expect(arr.map((r) => r.id).sort()).toEqual([10, 11]); // notification produced no reply
+  });
+
+  it("revokes an agent token immediately", async () => {
+    const { authenticateAgent, revokeAgentToken } = await import("../src/mcp/agentTokens");
+    expect(await authenticateAgent(env as any, TOKEN)).not.toBeNull();
+    expect(await revokeAgentToken(env as any, AGENT_ID)).toBe(true);
+    expect(await authenticateAgent(env as any, TOKEN)).toBeNull();
   });
 });

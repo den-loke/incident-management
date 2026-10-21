@@ -330,8 +330,8 @@ Detail on the real gaps:
   MCP-over-HTTP at **`POST /mcp`** (`src/mcp/server.ts`) — a minimal, self-contained
   JSON-RPC 2.0 handler for the core MCP methods (`initialize` / `tools/list` /
   `tools/call`, plus `ping` + `notifications/initialized`), no SDK dependency
-  (single-tenant, opinionated). Bearer-token auth via `MCP_TOKEN` (unset = disabled).
-  Four **read-only analytics** tools, thin wrappers over the existing reporting layer:
+  (single-tenant, opinionated). Per-agent bearer tokens are managed in dashboard Settings, stored as SHA-256 hashes, and immediately revocable.
+  Read-only analytics tools plus the narrowly scoped `raise_incident` action; no MCP resolve/close tools are exposed.
   `get_report` (metrics over a period), `get_insights` (severity/path/monthly-trend +
   MTTR breakdowns), `list_follow_ups` (cross-incident action items), `list_incidents`
   (history with severity/path filters). This is where an LLM adds the most value —
